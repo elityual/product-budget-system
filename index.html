@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title> Atlas Máquinas & Obras | Gestão Comercial</title>
+  
+  <!-- Estilos mantidos separadamente para facilitar a manutenção. -->
+  <link rel="stylesheet" href="assets/css/menu.css">
+
+</head>
+
+<body>
+  <!-- Cabeçalho do sistema, inspirado na faixa escura da referência. -->
+  <header class="topbar">
+    <div class="brand"><i></i> Atlas Máquinas & Obras</div>
+
+    <span>Gestão comercial • 01 de setembro de 2026</span><b>GC</b>
+
+  </header>
+
+  <main>
+    
+    <!-- Atalhos visuais da esquerda. -->
+    <nav class="icons">
+
+      <button>☰</button>
+
+      <button>▣</button>
+
+      <button>▤</button>
+
+      <button>⚙</button>
+
+    </nav>
+    
+    <!-- Opções baseadas nos requisitos documentados em docs/ideas.text. -->
+    <aside><h2>MENU PRINCIPAL</h2>
+
+      <button class="active" data-page="clientes" data-menu="clientes">Clientes</button>
+
+        <button class="sub" data-client-action="listar" data-menu="clientes">Listar clientes</button>
+        
+        <button class="sub" data-new="clientes" data-menu="clientes">Incluir</button>
+
+        <button class="sub" data-client-action="editar" data-menu="clientes">Editar</button>
+
+        <button class="sub" data-client-action="excluir" data-menu="clientes">Excluir</button>
+
+      <button data-page="categorias" data-menu="produtos">Produtos › Categorias</button>
+
+        <button class="sub" data-page="itens" data-menu="produtos">Itens / Produtos</button>
+
+        <button class="sub" data-new="itens" data-menu="produtos">+ Novo produto</button>
+
+      <button data-page="orcamentos" data-menu="orcamentos">Orçamentos</button>
+      
+        <button class="sub" data-new="orcamentos" data-menu="orcamentos">+ Novo orçamento</button>
+
+      <button id="exit">Sair</button>
+    </aside>
+
+    <!-- Conteúdo principal: títulos, resumo, pesquisa e tabela. -->
+    <section class="content">
+      <p class="crumb">Início / <span id="crumb">Clientes</span></p>
+        <h1 id="title">CLIENTES</h1>
+      
+      <div class="heading">
+        <div>
+          <h3 id="subtitle">Cadastro de clientes</h3>
+          <p id="description">Consulte e gerencie os clientes cadastrados no sistema.</p>
+        </div>
+        
+        <button class="primary" id="new">+ INCLUIR CLIENTE</button>
+      </div>
+      
+      <label class="search">⌕ 
+        <input 
+        id="filter" 
+        type="search" 
+        placeholder="Pesquisar registro">
+
+      </label>
+
+      <div class="table">
+        <table>
+          <thead id="thead"></thead>
+          
+          <tbody id="tbody"></tbody>
+
+        </table>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Janela reutilizada para os formulários de incluir e editar. -->
+  <div class="overlay hidden" id="overlay"><section class="modal"><header><h2 id="modal-title">Novo registro</h2><button id="close">×</button></header><form id="form"></form></section></div>
+  
+  <!-- JavaScript separado: dados demonstrativos e interações. -->
+  <script src="assets/js/menu.js"></script>
+
+</body>
+
+</html>
