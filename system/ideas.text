@@ -1,0 +1,190 @@
+main menu
+
+    informacoes da tabela via supbase
+
+
+    • Clientes
+
+        - Listar; eh um submenu1; exibir logo ao abrir o menu de clientes.
+
+            Exibir todos os registros cadastrados da tabela(TabelaCliente).
+
+
+        - Inserir; eh um submenu2; cadastrar um novo registro.
+            
+            Inserir, incluir um registro de um novo cliente (TabelaCliente);
+
+            -Regras obrigatórias
+
+                • pedir as informacoes da TabelaCliente(Código gerado automaticamente).
+                • Não salvar sem nome e CPF/CNPJ.
+
+
+        - Alterar; eh um submenu3; editar um registro existente.
+            
+            Alterar, editar um registro existente de um cliente (TabelaCliente); 
+            
+            -Regras obrigatórias
+
+                • uma lista com somente os nomes dos clientes, com opcao de pesquisar por ele, para editar as informacoes da sua TabelaCliente; 
+                • pedir para confirmar a alteracao.
+
+
+        - Excluir; eh um submenu4; remover um registro da lista.
+
+            Excluir remove o registro da tabela (TabelaCliente); 
+            
+            -Regras obrigatórias
+
+            •  uma lista com somente os nomes dos clientes, com opcao de pesquisar por ele, para excluir sua TabelaCliente; 
+            • pedir para confirmar e uma senha para validar
+
+
+        - TabelaCliente
+
+            • Código Cliente (gerado automaticamente - imutavel)
+            • Tipo de Cliente: Pessoa Física ou Jurídica.
+            • CPF / CNPJ. 
+            • Nome do Cliente.
+
+
+    • Produtos
+
+        • Categorias; eh um submenu5; categorias dos itens(produtos)
+            
+            Exibir todos os registros cadastrados da tabela(TabelaCategorias).
+
+            -Regras obrigatórias
+            -- Botao para incluir novas categorias.
+            -- Na listagem, exibir botões Alterar e Excluir.
+
+
+            - Inserir; butao1; cadastrar uma nova categoria.
+            
+                Inserir, incluir um registro de uma nova categoria (TabelaCategorias);
+
+                -Regras obrigatórias
+
+                    •não permitir salvar categoria sem descrição.
+
+
+            - Alterar; butao2; editar uma categoria.
+            
+                Alterar, editar um registro existente de uma categoria (TabelaCategorias); 
+            
+                -Regras obrigatórias
+
+                    • pedir para confirmar a alteracao.
+
+
+            - Excluir; butao3; remover um registro da lista.
+
+                Excluir remove o registro da tabela (TabelaCategorias); 
+            
+                - Regras obrigatórias
+ 
+                    • pedir para confirmar e uma senha para validar
+
+        - TabelaCategorias
+
+            • Código da categoria (gerado automaticamente - imutavel). 
+            • Descrição da categoria.
+
+
+
+
+        • Itens; submenu6; os produtos a vender
+            
+            Exibir todos os registros cadastrados na tabela (TabelaItensProdutos).
+
+            -Regras obrigatórias
+            -- Botao para incluir novos Itens(Produtos). 
+            -- Na listagem, exibir botões Editar e Excluir.
+
+            - Inserir; butao4; cadastrar uma nova categoria.
+            
+                Inserir, incluir um registro de uma nova categoria (TabelaItensProdutos);
+
+                -Regras obrigatórias
+
+                    • Não salvar sem categoria. 
+                    • Não salvar sem descrição. 
+                    • Não salvar sem valor de venda. 
+                    • Não salvar sem status.
+
+
+            - Alterar; butao5; editar uma categoria.
+            
+                Alterar, editar um registro existente de uma categoria (TabelaItensProdutos); 
+            
+                -Regras obrigatórias
+
+                    • pedir para confirmar a alteracao.
+                    • Editar deve carregar dados no formulário.
+
+
+            - Excluir; butao6; remover um registro da lista.
+
+                Excluir remove o registro da tabela (TabelaItensProdutos); 
+            
+                - Regras obrigatórias
+ 
+                    • pedir para confirmar e uma senha para validar
+ 
+        
+            - TabelaItensProdutos
+
+                • Código do produto (gerado automaticamente - imutavel). 
+                • Categoria do produto.
+                • Nome do Produto. 
+                • Descrição. 
+                • Valor de venda. 
+                • Data de cadastro. 
+                • Status: Ativo ou Inativo.
+
+
+    • Orçamentos
+
+        Exibir todos os registros cadastrados da tabela (TabelaOrçamento).
+        O orçamento reúne cliente, datas e itens de produtos.
+        
+        - Regras obrigatórias
+        -- Botao para incluir novos Orçamentos.
+
+        - Inserir; butao7; cadastrar uma nova categoria.
+            
+                Inserir, incluir um registro de um novo Orçamento (TabelaOrçamento);
+                Ao clicar Inserir(butao7), uma lista com todos os Nomes dos clientes(TabelaCliente) registrados aparecer para selecionar; ter um botao Confirmar(botao8);
+
+                Ao clicar Confirmar(botao8) aparece uma lista(mini menu) 
+                    - com o Nome do Produto(TabelaItensProdutos); 
+                    - sua Descricao(TabelaItensProdutos);
+                    - Valor de venda(TabelaItensProdutos);
+                    - Quantidade de Itens, escolhido na hora 
+
+                -Regras obrigatórias
+
+                    • Não salvar sem Cliente selecionado. 
+                    • Não salvar sem Data de validade. 
+                    • Não salvar Orçamento sem nenhum Item
+            
+
+        -TabelaOrçamento
+
+            • Código do orçamento (gerado automaticamente - imutavel). 
+            • Cliente selecionado.
+            • Codigo do Cliente selecionado (vem da TabelaCliente).
+            • Data do orçamento (gerado automaticamente - imutavel). 
+            • Data de validade. 
+            • Valor total calculado (calculado automaticamente apartir soma dos totais dos itens)
+
+        -TabelaItensOrçamento
+
+            • Código do produto (vem da TabelaItensProdutos).
+            • Nome Produto (vem da TabelaItensProdutos).  
+            • Quantidade. 
+            • Valor unitário (vem da TabelaItensProdutos). 
+            • Valor total do item (Valor total do item = Quantidade × Valor unitário).
+
+
+    • Sair
