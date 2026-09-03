@@ -16,7 +16,7 @@
   <header class="topbar">
     <div class="brand"><i></i> Atlas Máquinas & Obras</div>
 
-    <span>Gestão comercial • 01 de setembro de 2026</span><b>GC</b>
+    <span>Gestão comercial • <time id="current-date"></time></span><b>GC</b>
 
   </header>
 
@@ -42,21 +42,21 @@
 
         <button class="sub" data-client-action="listar" data-menu="clientes">Listar clientes</button>
         
-        <button class="sub" data-new="clientes" data-menu="clientes">Incluir</button>
+        <button class="sub" data-new="clientes" data-menu="clientes">Novo cliente</button>
 
-        <button class="sub" data-client-action="editar" data-menu="clientes">Editar</button>
+      <button data-page="itens" data-menu="produtos">Produtos</button>
 
-        <button class="sub" data-client-action="excluir" data-menu="clientes">Excluir</button>
+        <button class="sub" data-product-action="listar" data-menu="produtos">Listar produtos</button>
 
-      <button data-page="categorias" data-menu="produtos">Produtos › Categorias</button>
+        <button class="sub" data-page="categorias" data-menu="produtos">Categorias</button>
 
-        <button class="sub" data-page="itens" data-menu="produtos">Itens / Produtos</button>
-
-        <button class="sub" data-new="itens" data-menu="produtos">+ Novo produto</button>
+        <button class="sub" data-new="itens" data-menu="produtos">Novo produto</button>
 
       <button data-page="orcamentos" data-menu="orcamentos">Orçamentos</button>
+
+        <button class="sub" data-budget-action="listar" data-menu="orcamentos">Listar orçamentos</button>
       
-        <button class="sub" data-new="orcamentos" data-menu="orcamentos">+ Novo orçamento</button>
+        <button class="sub" data-new="orcamentos" data-menu="orcamentos">Novo orçamento</button>
 
       <button id="exit">Sair</button>
     </aside>
@@ -75,13 +75,39 @@
         <button class="primary" id="new">+ INCLUIR CLIENTE</button>
       </div>
       
-      <label class="search">⌕ 
-        <input 
-        id="filter" 
-        type="search" 
-        placeholder="Pesquisar registro">
+      <div class="filters">
+        <label class="search">⌕
+          <input
+          id="filter"
+          type="search"
+          placeholder="Pesquisar registro">
+        </label>
 
-      </label>
+        <label class="type-filter" id="client-type-filter">
+          Tipo
+          <select id="client-type">
+            <option value="">Todos</option>
+            <option value="Pessoa Física">Pessoa Física</option>
+            <option value="Pessoa Jurídica">Pessoa Jurídica</option>
+          </select>
+        </label>
+
+        <label class="type-filter hidden" id="category-filter-container">
+          Categoria
+          <select id="category-filter">
+            <option value="">Todas</option>
+          </select>
+        </label>
+
+        <label class="type-filter hidden" id="status-filter-container">
+          Status
+          <select id="status-filter">
+            <option value="">Todos</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+        </label>
+      </div>
 
       <div class="table">
         <table>
@@ -92,6 +118,12 @@
         </table>
       </div>
 
+      <nav class="pagination" id="pagination" aria-label="Paginação da tabela">
+        <button class="secondary" type="button" id="previous-page">Anterior</button>
+        <span id="page-info" aria-live="polite">Página 1 de 1</span>
+        <button class="secondary" type="button" id="next-page">Próxima</button>
+      </nav>
+
     </section>
   </main>
 
@@ -99,7 +131,7 @@
   <div class="overlay hidden" id="overlay"><section class="modal"><header><h2 id="modal-title">Novo registro</h2><button id="close">×</button></header><form id="form"></form></section></div>
   
   <!-- JavaScript separado: dados demonstrativos e interações. -->
-  <script src="assets/js/menu.js"></script>
+  <script type="module" src="assets/js/menu.js"></script>
 
 </body>
 

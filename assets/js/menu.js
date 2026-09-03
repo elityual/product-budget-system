@@ -1,206 +1,138 @@
-// Dados de exemplo: substitua por consultas ao Supabase quando o banco existir.
-const data = {
-  clientes: [
-    ['CLI-0001', 'Pessoa Jurídica', '12.345.678/0001-99', 'Construtora Horizonte'],
-    ['CLI-0002', 'Pessoa Física', '123.456.789-10', 'Mariana Oliveira']
-  ],
-  categorias: [
-    ['CAT-001', 'Materiais de construção'],
-    ['CAT-002', 'Ferramentas']
-  ],
-  itens: [
-    ['PRD-0001', 'Materiais de construção', 'Cimento CP II 50kg', 'R$ 42,90', 'Ativo'],
-    ['PRD-0002', 'Ferramentas', 'Furadeira profissional', 'R$ 359,00', 'Inativo']
-  ],
-  orcamentos: [
-    ['ORC-0102', 'Construtora Horizonte', '01/09/2026', '30/09/2026', 'R$ 12.480,00']
-  ]
+import { clientActionContent, pages } from './config.js';
+import { data, recordPrefixes } from './data.js';
+import { createField, setupCategoryCombobox } from './form.js';
+import { createRow, filterRows, paginateRows, recordsPerPage } from './table.js';
+
+const state = {
+  currentPage: 'clientes',
+  currentMenu: 'clientes',
+  currentClientAction: 'listar',
+  currentProductAction: 'listar',
+  currentBudgetAction: 'listar',
+  currentTablePage: 1
 };
 
-// Configuração de cada página do menu.
-const pageClientes = {
-  title: 'CLIENTES',
-  subtitle: 'Cadastro de clientes',
-  description: 'Consulte e gerencie os clientes cadastrados no sistema.',
-  button: '+ INCLUIR CLIENTE',
-  headers: ['Código', 'Tipo', 'CPF / CNPJ', 'Nome'],
-  fields: [
-    ['tipo', 'Tipo de cliente', 'select', 'Pessoa Física,Pessoa Jurídica'],
-    ['documento', 'CPF / CNPJ', 'text'],
-    ['nome', 'Nome do cliente', 'text']
-  ]
-};
-
-// Textos específicos de cada operação da área de clientes.
-const clientActionContent = {
-  listar: {
-    subtitle: 'Lista de clientes',
-    description: 'Consulte e pesquise todos os clientes cadastrados no sistema.'
-  },
-  incluir: {
-    subtitle: 'Incluir cliente',
-    description: 'Preencha o formulário para cadastrar um novo cliente.'
-  },
-  editar: {
-    subtitle: 'Editar cliente',
-    description: 'Pesquise e selecione um cliente na lista para editar seus dados.'
-  },
-  excluir: {
-    subtitle: 'Excluir cliente',
-    description: 'Pesquise e selecione um cliente na lista para confirmar sua exclusão.'
-  }
-};
-
-const pageCategorias = {
-  title: 'CATEGORIAS',
-  subtitle: 'Categorias de produtos',
-  description: 'Organize os produtos em categorias.',
-  button: '+ INCLUIR CATEGORIA',
-  headers: ['Código', 'Descrição', 'Ações'],
-  fields: [['descricao', 'Descrição da categoria', 'text']]
-};
-
-const pageItens = {
-  title: 'ITENS / PRODUTOS',
-  subtitle: 'Produtos cadastrados',
-  description: 'Gerencie os itens disponíveis para inclusão em orçamentos.',
-  button: '+ INCLUIR PRODUTO',
-  headers: ['Código', 'Categoria', 'Produto', 'Valor de venda', 'Status', 'Ações'],
-  fields: [
-    ['categoria', 'Categoria', 'select', 'Materiais de construção,Ferramentas'],
-    ['produto', 'Nome do produto', 'text'],
-    ['descricao', 'Descrição', 'text'],
-    ['valor', 'Valor de venda', 'number'],
-    ['status', 'Status', 'select', 'Ativo,Inativo']
-  ]
-};
-
-const pageOrcamentos = {
-  title: 'ORÇAMENTOS',
-  subtitle: 'Orçamentos',
-  description: 'Acompanhe os orçamentos emitidos para seus clientes.',
-  button: '+ NOVO ORÇAMENTO',
-  headers: ['Código', 'Cliente', 'Data', 'Validade', 'Valor total', 'Ações'],
-  fields: [
-    ['cliente', 'Cliente', 'select', 'Construtora Horizonte,Mariana Oliveira'],
-    ['validade', 'Data de validade', 'date']
-  ]
-};
-
-const pages = {
-  clientes: pageClientes,
-  categorias: pageCategorias,
-  itens: pageItens,
-  orcamentos: pageOrcamentos
-};
-
-let currentPage = 'clientes';
-let currentMenu = 'clientes';
-let currentClientAction = 'listar';
 const get = (selector) => document.querySelector(selector);
-const recordPrefixes = {
-  clientes: 'CLI-',
-  categorias: 'CAT-',
-  itens: 'PRD-',
-  orcamentos: 'ORC-'
-};
 
-// Renderização da página.
-function render() {
-  const page = pages[currentPage];
-  const actionContent = currentPage === 'clientes'
-    ? clientActionContent[currentClientAction]
-    : null;
-  const search = get('#filter').value.toLowerCase();
-  const rows = data[currentPage].filter((row) => {
-    return row.join(' ').toLowerCase().includes(search);
+function updateHeaderDate() {
+  const currentDate = new Date();
+  const dateElement = get('#current-date');
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+  const day = String(currentDate.getDate()).padStart(2, '0');
+
+  dateElement.dateTime = `${year}-${month}-${day}`;
+  dateElement.textContent = new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'long'
+  }).format(currentDate);
+}
+
+function updateCategoryFilterOptions() {
+  const categoryFilter = get('#category-filter');
+  const selectedCategory = categoryFilter.value;
+  const options = [new Option('Todas', '')];
+
+  data.categorias.forEach((category) => {
+    options.push(new Option(category[1], category[1]));
   });
+
+  categoryFilter.replaceChildren(...options);
+  categoryFilter.value = selectedCategory;
+}
+
+function renderMenu() {
+  document.querySelectorAll('aside > button[data-menu]').forEach((button) => {
+    const isSubmenu = button.classList.contains('sub');
+    const belongsToCurrentMenu = button.dataset.menu === state.currentMenu;
+    const isCurrentClientAction =
+      button.dataset.clientAction === state.currentClientAction;
+    const isCurrentNewClientAction =
+      button.dataset.new === 'clientes' && state.currentClientAction === 'incluir';
+    const isCurrentProductAction =
+      state.currentPage === 'itens' &&
+      button.dataset.productAction === state.currentProductAction;
+    const isCurrentNewProductAction =
+      state.currentPage === 'itens' &&
+      button.dataset.new === 'itens' &&
+      state.currentProductAction === 'incluir';
+    const isCurrentBudgetAction =
+      state.currentPage === 'orcamentos' &&
+      button.dataset.budgetAction === state.currentBudgetAction;
+    const isCurrentNewBudgetAction =
+      state.currentPage === 'orcamentos' &&
+      button.dataset.new === 'orcamentos' &&
+      state.currentBudgetAction === 'incluir';
+    const isCurrentSubmenuPage = button.dataset.page === state.currentPage;
+
+    button.classList.toggle('hidden', isSubmenu && !belongsToCurrentMenu);
+    button.classList.toggle(
+      'active',
+      (!isSubmenu && belongsToCurrentMenu) ||
+        (isSubmenu &&
+          (isCurrentClientAction ||
+            isCurrentNewClientAction ||
+            isCurrentProductAction ||
+            isCurrentNewProductAction ||
+            isCurrentBudgetAction ||
+            isCurrentNewBudgetAction ||
+            isCurrentSubmenuPage))
+    );
+  });
+}
+
+function render() {
+  updateCategoryFilterOptions();
+
+  const page = pages[state.currentPage];
+  const actionContent = state.currentPage === 'clientes'
+    ? clientActionContent[state.currentClientAction]
+    : null;
+  const isClientList =
+    state.currentPage === 'clientes' && state.currentClientAction === 'listar';
+  const isProductList =
+    state.currentPage === 'itens' && state.currentProductAction === 'listar';
+  const filteredRows = filterRows(data[state.currentPage], {
+    search: get('#filter').value,
+    clientType: isClientList ? get('#client-type').value : '',
+    category: isProductList ? get('#category-filter').value : '',
+    status: isProductList ? get('#status-filter').value : ''
+  });
+  const pagination = paginateRows(filteredRows, state.currentTablePage);
+  state.currentTablePage = pagination.currentPage;
 
   get('#crumb').textContent = page.title;
   get('#title').textContent = page.title;
   get('#subtitle').textContent = actionContent?.subtitle || page.subtitle;
   get('#description').textContent = actionContent?.description || page.description;
   get('#new').textContent = page.button;
-  get('#new').classList.toggle(
-    'hidden',
-    currentPage === 'clientes' && ['editar', 'excluir'].includes(currentClientAction)
-  );
+  get('#new').classList.remove('hidden');
+  get('#client-type-filter').classList.toggle('hidden', !isClientList);
+  get('#category-filter-container').classList.toggle('hidden', !isProductList);
+  get('#status-filter-container').classList.toggle('hidden', !isProductList);
 
   get('#thead').innerHTML = `
     <tr>${page.headers.map((header) => `<th>${header}</th>`).join('')}</tr>
   `;
-  get('#tbody').innerHTML = rows.map(createRow).join('') || `
+  get('#tbody').innerHTML = pagination.visibleRows
+    .map(({ row, index }) => createRow(row, index, state.currentPage))
+    .join('') || `
     <tr>
       <td colspan="${page.headers.length}">Nenhum registro encontrado.</td>
     </tr>
   `;
 
-  document.querySelectorAll('aside > button[data-menu]').forEach((button) => {
-    const isSubmenu = button.classList.contains('sub');
-    const belongsToCurrentMenu = button.dataset.menu === currentMenu;
-    const isCurrentClientAction =
-      button.dataset.clientAction === currentClientAction;
-    const isCurrentNewClientAction =
-      button.dataset.new === 'clientes' && currentClientAction === 'incluir';
+  const recordLabel = filteredRows.length === 1 ? 'registro' : 'registros';
+  get('#page-info').textContent =
+    `Página ${state.currentTablePage} de ${pagination.totalPages} · ` +
+    `${filteredRows.length} ${recordLabel}`;
+  get('#previous-page').disabled = state.currentTablePage === 1;
+  get('#next-page').disabled = state.currentTablePage === pagination.totalPages;
 
-    button.classList.toggle('hidden', isSubmenu && !belongsToCurrentMenu);
-    button.classList.toggle(
-      'active',
-      (!isSubmenu && belongsToCurrentMenu) ||
-        (isSubmenu && (isCurrentClientAction || isCurrentNewClientAction))
-    );
-  });
+  renderMenu();
 }
 
-// Criação dos elementos visuais.
-function createRow(row, index) {
-  const cells = row
-    .map((value, column) => {
-      const isInactiveItem = currentPage === 'itens' && column === 4 && value === 'Inativo';
-
-      if (currentPage === 'itens' && column === 4) {
-        const inactiveClass = isInactiveItem ? 'inactive' : '';
-        return `<td><span class="status ${inactiveClass}">${value}</span></td>`;
-      }
-
-      return `<td>${value}</td>`;
-    })
-    .join('');
-
-  const isSelectableClient =
-    currentPage === 'clientes' && currentClientAction !== 'listar';
-  const rowClass = isSelectableClient ? 'selectable-row' : '';
-  const rowClick = isSelectableClient ? ` onclick="selectClient(${index})"` : '';
-  const actions = currentPage === 'clientes' ? '' : createRecordActions(index);
-
-  return `<tr class="${rowClass}"${rowClick}>${cells}${actions}</tr>`;
-}
-
-function createRecordActions(index) {
-  return `
-    <td>
-      <button class="action" onclick="edit(${index})">✎</button>
-      <button class="action" onclick="removeRecord(${index})">⌫</button>
-    </td>
-  `;
-}
-
-function createField([name, label, type, options]) {
-  if (type === 'select') {
-    const selectOptions = options
-      .split(',')
-      .map((option) => `<option>${option}</option>`)
-      .join('');
-
-    return `<label>${label}<select name="${name}">${selectOptions}</select></label>`;
-  }
-
-  return `<label>${label}<input required name="${name}" type="${type}"></label>`;
-}
-
-// Modal de cadastro e edição.
 function openModal(index = null) {
-  const page = pages[currentPage];
+  const page = pages[state.currentPage];
   const form = get('#form');
   const isEditing = index !== null;
 
@@ -208,17 +140,23 @@ function openModal(index = null) {
     ? 'Editar registro'
     : page.button.replace('+ ', '');
   form.innerHTML = `
-    ${page.fields.map(createField).join('')}
+    ${page.fields.map((field) => createField(field, data.categorias)).join('')}
     <div class="footer">
       <button class="secondary" type="button" id="cancel">Cancelar</button>
       <button class="primary">SALVAR</button>
     </div>
   `;
 
+  setupCategoryCombobox(form);
+
   if (isEditing) {
     form.dataset.index = index;
+    const fieldValueIndexes = state.currentPage === 'itens'
+      ? [1, 2, 3, 4, 6]
+      : page.fields.map((_, position) => position + 1);
+
     form.querySelectorAll('input, select').forEach((field, position) => {
-      field.value = data[currentPage][index][position + 1] || '';
+      field.value = data[state.currentPage][index][fieldValueIndexes[position]] ?? '';
     });
   } else {
     delete form.dataset.index;
@@ -231,9 +169,18 @@ function openModal(index = null) {
 function closeModal() {
   get('#overlay').classList.add('hidden');
 
-  // O submenu Incluir é uma ação temporária; ao fechar, volta para a listagem.
-  if (currentPage === 'clientes' && currentClientAction === 'incluir') {
-    currentClientAction = 'listar';
+  if (state.currentPage === 'clientes' && state.currentClientAction === 'incluir') {
+    state.currentClientAction = 'listar';
+    render();
+  }
+
+  if (state.currentPage === 'itens' && state.currentProductAction === 'incluir') {
+    state.currentProductAction = 'listar';
+    render();
+  }
+
+  if (state.currentPage === 'orcamentos' && state.currentBudgetAction === 'incluir') {
+    state.currentBudgetAction = 'listar';
     render();
   }
 }
@@ -248,47 +195,75 @@ function removeRecord(index) {
   );
 
   if (confirmed) {
-    data[currentPage].splice(index, 1);
+    data[state.currentPage].splice(index, 1);
     render();
-  }
-}
-
-function selectClient(index) {
-  if (currentClientAction === 'editar') {
-    edit(index);
-  }
-
-  if (currentClientAction === 'excluir') {
-    removeRecord(index);
   }
 }
 
 window.edit = edit;
 window.removeRecord = removeRecord;
-window.selectClient = selectClient;
 
-// Eventos.
-function changePage(button) {
-  currentPage = button.dataset.page;
-  currentMenu = button.dataset.menu;
-  currentClientAction = 'listar';
+function resetFilters() {
   get('#filter').value = '';
+  get('#client-type').value = '';
+  get('#category-filter').value = '';
+  get('#status-filter').value = '';
+}
+
+function changePage(button) {
+  state.currentPage = button.dataset.page;
+  state.currentMenu = button.dataset.menu;
+  state.currentClientAction = 'listar';
+  state.currentProductAction = 'listar';
+  state.currentBudgetAction = 'listar';
+  state.currentTablePage = 1;
+  resetFilters();
   render();
 }
 
 function openNewRecord(button) {
-  currentPage = button.dataset.new;
-  currentMenu = button.dataset.menu;
-  currentClientAction = currentPage === 'clientes' ? 'incluir' : 'listar';
+  state.currentPage = button.dataset.new;
+  state.currentMenu = button.dataset.menu;
+  state.currentClientAction = state.currentPage === 'clientes' ? 'incluir' : 'listar';
+  state.currentProductAction = state.currentPage === 'itens' ? 'incluir' : 'listar';
+  state.currentBudgetAction = state.currentPage === 'orcamentos' ? 'incluir' : 'listar';
+  state.currentTablePage = 1;
   render();
   openModal();
 }
 
 function selectClientAction(button) {
-  currentPage = 'clientes';
-  currentMenu = 'clientes';
-  currentClientAction = button.dataset.clientAction;
+  state.currentPage = 'clientes';
+  state.currentMenu = 'clientes';
+  state.currentClientAction = button.dataset.clientAction;
+  state.currentTablePage = 1;
   get('#filter').value = '';
+  get('#client-type').value = '';
+  render();
+}
+
+function selectProductAction(button) {
+  state.currentPage = 'itens';
+  state.currentMenu = 'produtos';
+  state.currentProductAction = button.dataset.productAction;
+  state.currentTablePage = 1;
+  get('#filter').value = '';
+  get('#category-filter').value = '';
+  get('#status-filter').value = '';
+  render();
+}
+
+function selectBudgetAction(button) {
+  state.currentPage = 'orcamentos';
+  state.currentMenu = 'orcamentos';
+  state.currentBudgetAction = button.dataset.budgetAction;
+  state.currentTablePage = 1;
+  get('#filter').value = '';
+  render();
+}
+
+function renderFirstPage() {
+  state.currentTablePage = 1;
   render();
 }
 
@@ -304,8 +279,29 @@ document.querySelectorAll('[data-client-action]').forEach((button) => {
   button.onclick = () => selectClientAction(button);
 });
 
+document.querySelectorAll('[data-product-action]').forEach((button) => {
+  button.onclick = () => selectProductAction(button);
+});
+
+document.querySelectorAll('[data-budget-action]').forEach((button) => {
+  button.onclick = () => selectBudgetAction(button);
+});
+
 get('#new').onclick = () => openModal();
-get('#filter').oninput = render;
+get('#filter').oninput = renderFirstPage;
+get('#client-type').onchange = renderFirstPage;
+get('#category-filter').onchange = renderFirstPage;
+get('#status-filter').onchange = renderFirstPage;
+get('#previous-page').onclick = () => {
+  if (state.currentTablePage > 1) {
+    state.currentTablePage -= 1;
+    render();
+  }
+};
+get('#next-page').onclick = () => {
+  state.currentTablePage += 1;
+  render();
+};
 get('#close').onclick = closeModal;
 get('#overlay').onclick = (event) => {
   if (event.target === event.currentTarget) {
@@ -314,25 +310,70 @@ get('#overlay').onclick = (event) => {
 };
 get('#exit').onclick = () => alert('Sessão encerrada.');
 
-// Salvamento temporário dos dados.
 get('#form').onsubmit = (event) => {
   event.preventDefault();
 
   const form = event.target;
+  const categoryField = form.elements.categoria;
+
+  if (state.currentPage === 'itens' && categoryField) {
+    const availableCategories = data.categorias.map((category) => category[1]);
+    const isAvailableCategory = availableCategories.includes(categoryField.value);
+
+    if (!isAvailableCategory) {
+      categoryField.setCustomValidity('Selecione uma categoria cadastrada.');
+      categoryField.reportValidity();
+      return;
+    }
+  }
+
   const values = [...new FormData(form).values()];
   const index = form.dataset.index;
 
-  if (index !== undefined) {
-    const recordCode = data[currentPage][index][0];
-    data[currentPage][index] = [recordCode, ...values];
+  if (index !== undefined && ['clientes', 'categorias'].includes(state.currentPage)) {
+    const recordReference =
+      state.currentPage === 'clientes' ? 'deste cliente' : 'desta categoria';
+
+    if (!confirm(`Confirma a alteração dos dados ${recordReference}?`)) {
+      return;
+    }
+  }
+
+  if (state.currentPage === 'itens') {
+    const recordCode = index !== undefined
+      ? data.itens[index][0]
+      : recordPrefixes.itens + String(data.itens.length + 1).padStart(4, '0');
+    const registrationDate = index !== undefined
+      ? data.itens[index][5]
+      : new Date().toLocaleDateString('pt-BR');
+    const productRecord = [
+      recordCode,
+      ...values.slice(0, 4),
+      registrationDate,
+      values[4]
+    ];
+
+    if (index !== undefined) {
+      data.itens[index] = productRecord;
+    } else {
+      data.itens.push(productRecord);
+      state.currentTablePage = Math.ceil(data.itens.length / recordsPerPage);
+    }
+  } else if (index !== undefined) {
+    const recordCode = data[state.currentPage][index][0];
+    data[state.currentPage][index] = [recordCode, ...values];
   } else {
-    const nextRecordNumber = String(data[currentPage].length + 1).padStart(4, '0');
-    const recordCode = recordPrefixes[currentPage] + nextRecordNumber;
-    data[currentPage].push([recordCode, ...values]);
+    const nextRecordNumber = String(data[state.currentPage].length + 1).padStart(4, '0');
+    const recordCode = recordPrefixes[state.currentPage] + nextRecordNumber;
+    data[state.currentPage].push([recordCode, ...values]);
+    state.currentTablePage = Math.ceil(
+      data[state.currentPage].length / recordsPerPage
+    );
   }
 
   closeModal();
   render();
 };
 
+updateHeaderDate();
 render();
