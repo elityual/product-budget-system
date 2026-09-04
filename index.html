@@ -55,6 +55,8 @@
       <button data-page="orcamentos" data-menu="orcamentos">Orçamentos</button>
 
         <button class="sub" data-budget-action="listar" data-menu="orcamentos">Listar orçamentos</button>
+
+        <button class="sub" data-page="itensOrcamento" data-menu="orcamentos">Itens do orçamento</button>
       
         <button class="sub" data-new="orcamentos" data-menu="orcamentos">Novo orçamento</button>
 
@@ -76,37 +78,50 @@
       </div>
       
       <div class="filters">
-        <label class="search">⌕
+        <label class="search"><span class="search-icon" aria-hidden="true"></span>
           <input
           id="filter"
           type="search"
           placeholder="Pesquisar registro">
         </label>
 
-        <label class="type-filter" id="client-type-filter">
-          Tipo
-          <select id="client-type">
-            <option value="">Todos</option>
-            <option value="Pessoa Física">Pessoa Física</option>
-            <option value="Pessoa Jurídica">Pessoa Jurídica</option>
-          </select>
-        </label>
+        <div class="type-filter" id="client-type-filter">
+          <span>Tipo</span>
+          <div class="dropdown filter-control" data-dropdown>
+            <input class="dropdown-value" id="client-type" type="hidden" value="">
+            <button class="dropdown-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="client-type-options">
+              <span data-dropdown-label>Todos</span><span class="dropdown-icon" aria-hidden="true">▾</span>
+            </button>
+            <div class="dropdown-options hidden" id="client-type-options" role="listbox">
+              <button type="button" role="option" aria-selected="true" data-dropdown-option="">Todos</button>
+              <button type="button" role="option" aria-selected="false" data-dropdown-option="Pessoa Física">Pessoa Física</button>
+              <button type="button" role="option" aria-selected="false" data-dropdown-option="Pessoa Jurídica">Pessoa Jurídica</button>
+            </div>
+          </div>
+        </div>
 
-        <label class="type-filter hidden" id="category-filter-container">
-          Categoria
-          <select id="category-filter">
-            <option value="">Todas</option>
-          </select>
-        </label>
+        <div class="type-filter hidden" id="category-filter-container">
+          <span>Categoria</span>
+          <div class="combobox filter-control" data-combobox>
+            <input id="category-filter" type="text" autocomplete="off" placeholder="Todas / pesquisar" role="combobox" aria-autocomplete="list" aria-controls="category-filter-options" aria-expanded="false">
+            <div class="combo-options hidden" id="category-filter-options"></div>
+          </div>
+        </div>
 
-        <label class="type-filter hidden" id="status-filter-container">
-          Status
-          <select id="status-filter">
-            <option value="">Todos</option>
-            <option value="Ativo">Ativo</option>
-            <option value="Inativo">Inativo</option>
-          </select>
-        </label>
+        <div class="type-filter hidden" id="status-filter-container">
+          <span>Status</span>
+          <div class="dropdown filter-control" data-dropdown>
+            <input class="dropdown-value" id="status-filter" type="hidden" value="">
+            <button class="dropdown-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="status-filter-options">
+              <span data-dropdown-label>Todos</span><span class="dropdown-icon" aria-hidden="true">▾</span>
+            </button>
+            <div class="dropdown-options hidden" id="status-filter-options" role="listbox">
+              <button type="button" role="option" aria-selected="true" data-dropdown-option="">Todos</button>
+              <button type="button" role="option" aria-selected="false" data-dropdown-option="Ativo">Ativo</button>
+              <button type="button" role="option" aria-selected="false" data-dropdown-option="Inativo">Inativo</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="table">

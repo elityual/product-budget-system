@@ -5,7 +5,7 @@ const pageClientes = {
   button: '+ INCLUIR CLIENTE',
   headers: ['Código', 'Tipo', 'CPF / CNPJ', 'Nome', 'Ações'],
   fields: [
-    ['tipo', 'Tipo de cliente', 'select', 'Pessoa Física,Pessoa Jurídica'],
+    ['tipo', 'Tipo de cliente', 'dropdown', 'Pessoa Física,Pessoa Jurídica'],
     ['documento', 'CPF / CNPJ', 'text'],
     ['nome', 'Nome do cliente', 'text']
   ]
@@ -31,7 +31,7 @@ const pageItens = {
     ['produto', 'Nome do produto', 'text'],
     ['descricao', 'Descrição', 'text'],
     ['valor', 'Valor de venda', 'number'],
-    ['status', 'Status', 'select', 'Ativo,Inativo']
+    ['status', 'Status', 'dropdown', 'Ativo,Inativo']
   ]
 };
 
@@ -40,18 +40,35 @@ const pageOrcamentos = {
   subtitle: 'Orçamentos',
   description: 'Acompanhe os orçamentos emitidos para seus clientes.',
   button: '+ NOVO ORÇAMENTO',
-  headers: ['Código', 'Cliente', 'Data', 'Validade', 'Valor total', 'Ações'],
+  headers: ['Código', 'Cliente', 'Código do cliente', 'Data', 'Validade', 'Valor total', 'Ações'],
   fields: [
-    ['cliente', 'Cliente', 'select', 'Construtora Horizonte,Mariana Oliveira'],
+    ['cliente', 'Cliente', 'select'],
     ['validade', 'Data de validade', 'date']
   ]
+};
+
+const pageItensOrcamento = {
+  title: 'ITENS DO ORÇAMENTO',
+  subtitle: 'Itens dos orçamentos',
+  description: 'Consulte os produtos e valores registrados nos orçamentos.',
+  button: '',
+  headers: [
+    'Código do orçamento',
+    'Código do produto',
+    'Produto',
+    'Quantidade',
+    'Valor unitário',
+    'Valor total do item'
+  ],
+  fields: []
 };
 
 export const pages = {
   clientes: pageClientes,
   categorias: pageCategorias,
   itens: pageItens,
-  orcamentos: pageOrcamentos
+  orcamentos: pageOrcamentos,
+  itensOrcamento: pageItensOrcamento
 };
 
 export const clientActionContent = {

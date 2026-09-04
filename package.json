@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check assets/js/data.js && node --check assets/js/config.js && node --check assets/js/table.js && node --check assets/js/form.js && node --check assets/js/menu.js",
+    "check": "node --check assets/js/data.js && node --check assets/js/config.js && node --check assets/js/table.js && node --check assets/js/form.js && node --check assets/js/budget.js && node --check assets/js/menu.js",
     "test": "node --test"
   }
 }

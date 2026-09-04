@@ -36,24 +36,47 @@ export function formatCurrency(value) {
   }).format(Number(value));
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 export function createRow(row, index, currentPage) {
   const cells = row
     .map((value, column) => {
       const isItem = currentPage === 'itens';
+      const isBudgetItem = currentPage === 'itensOrcamento';
+      const isBudget = currentPage === 'orcamentos';
       const isInactiveItem = isItem && column === 6 && value === 'Inativo';
 
-      if (isItem && column === 4) {
+      if (
+        (isItem && column === 4) ||
+        (isBudgetItem && [4, 5].includes(column)) ||
+        (isBudget && column === 5)
+      ) {
         return `<td>${formatCurrency(value)}</td>`;
       }
 
       if (isItem && column === 6) {
         const inactiveClass = isInactiveItem ? 'inactive' : '';
-        return `<td><span class="status ${inactiveClass}">${value}</span></td>`;
+        return `<td><span class="status ${inactiveClass}">${escapeHtml(value)}</span></td>`;
       }
 
-      return `<td>${value}</td>`;
+      return `<td>${escapeHtml(value)}</td>`;
     })
     .join('');
+
+  if (currentPage === 'itensOrcamento') {
+    return `
+      <tr>
+        ${cells}
+      </tr>
+    `;
+  }
 
   return `
     <tr>

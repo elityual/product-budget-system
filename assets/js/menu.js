@@ -1,7 +1,21 @@
 import { clientActionContent, pages } from './config.js';
-import { data, recordPrefixes } from './data.js';
-import { createField, setupCategoryCombobox } from './form.js';
-import { createRow, filterRows, paginateRows, recordsPerPage } from './table.js';
+import {
+  calculateBudgetTotal,
+  createBudgetItemRecords,
+  createBudgetRecord,
+  filterBudgetClients,
+  filterBudgetProducts,
+  formatDateForInput
+} from './budget.js';
+import { data, getNextRecordCode } from './data.js';
+import { createField, setupComboboxes, setupDropdowns } from './form.js';
+import {
+  createRow,
+  filterRows,
+  formatCurrency,
+  paginateRows,
+  recordsPerPage
+} from './table.js';
 
 const state = {
   currentPage: 'clientes',
@@ -13,6 +27,8 @@ const state = {
 };
 
 const get = (selector) => document.querySelector(selector);
+let selectedBudgetClientCode = '';
+let budgetQuantities = {};
 
 function updateHeaderDate() {
   const currentDate = new Date();
@@ -30,14 +46,24 @@ function updateHeaderDate() {
 function updateCategoryFilterOptions() {
   const categoryFilter = get('#category-filter');
   const selectedCategory = categoryFilter.value;
-  const options = [new Option('Todas', '')];
+  const optionsContainer = get('#category-filter-options');
+  optionsContainer.replaceChildren();
 
-  data.categorias.forEach((category) => {
-    options.push(new Option(category[1], category[1]));
+  const options = [
+    ['', 'Todas'],
+    ...data.categorias.map((category) => [category[1], category[1]])
+  ];
+
+  options.forEach(([value, text]) => {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.dataset.comboboxOption = value;
+    option.textContent = text;
+    optionsContainer.append(option);
   });
 
-  categoryFilter.replaceChildren(...options);
   categoryFilter.value = selectedCategory;
+  setupComboboxes(get('#category-filter-container'));
 }
 
 function renderMenu() {
@@ -82,6 +108,8 @@ function renderMenu() {
 
 function render() {
   updateCategoryFilterOptions();
+  setupDropdowns(get('#client-type-filter'));
+  setupDropdowns(get('#status-filter-container'));
 
   const page = pages[state.currentPage];
   const actionContent = state.currentPage === 'clientes'
@@ -105,7 +133,7 @@ function render() {
   get('#subtitle').textContent = actionContent?.subtitle || page.subtitle;
   get('#description').textContent = actionContent?.description || page.description;
   get('#new').textContent = page.button;
-  get('#new').classList.remove('hidden');
+  get('#new').classList.toggle('hidden', !page.button);
   get('#client-type-filter').classList.toggle('hidden', !isClientList);
   get('#category-filter-container').classList.toggle('hidden', !isProductList);
   get('#status-filter-container').classList.toggle('hidden', !isProductList);
@@ -136,34 +164,212 @@ function openModal(index = null) {
   const form = get('#form');
   const isEditing = index !== null;
 
+  delete form.dataset.mode;
+
   get('#modal-title').textContent = isEditing
     ? 'Editar registro'
     : page.button.replace('+ ', '');
+  const dynamicOptions = state.currentPage === 'orcamentos'
+    ? { cliente: data.clientes.map((client) => client[3]) }
+    : {};
   form.innerHTML = `
-    ${page.fields.map((field) => createField(field, data.categorias)).join('')}
+    ${page.fields
+      .map((field) => createField(field, data.categorias, dynamicOptions))
+      .join('')}
     <div class="footer">
       <button class="secondary" type="button" id="cancel">Cancelar</button>
       <button class="primary">SALVAR</button>
     </div>
   `;
 
-  setupCategoryCombobox(form);
-
   if (isEditing) {
     form.dataset.index = index;
     const fieldValueIndexes = state.currentPage === 'itens'
       ? [1, 2, 3, 4, 6]
-      : page.fields.map((_, position) => position + 1);
+      : state.currentPage === 'orcamentos'
+        ? [1, 4]
+        : page.fields.map((_, position) => position + 1);
 
     form.querySelectorAll('input, select').forEach((field, position) => {
-      field.value = data[state.currentPage][index][fieldValueIndexes[position]] ?? '';
+      const value = data[state.currentPage][index][fieldValueIndexes[position]] ?? '';
+      field.value = field.type === 'date' ? formatDateForInput(value) : value;
     });
   } else {
     delete form.dataset.index;
   }
 
+  setupComboboxes(form);
+  setupDropdowns(form);
+
   get('#overlay').classList.remove('hidden');
   get('#cancel').onclick = closeModal;
+}
+
+function renderBudgetClientOptions(search = '') {
+  const optionsContainer = get('#budget-client-options');
+  const clients = filterBudgetClients(data.clientes, search);
+  optionsContainer.replaceChildren();
+
+  if (clients.length === 0) {
+    const emptyMessage = document.createElement('p');
+    emptyMessage.className = 'empty-options';
+    emptyMessage.textContent = 'Nenhum cliente encontrado.';
+    optionsContainer.append(emptyMessage);
+    return;
+  }
+
+  clients.forEach((client) => {
+    const option = document.createElement('label');
+    option.className = 'client-option';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'cliente';
+    radio.value = String(client[0]);
+    radio.checked = String(client[0]) === selectedBudgetClientCode;
+    option.classList.toggle('selected', radio.checked);
+    radio.onchange = () => {
+      selectedBudgetClientCode = String(client[0]);
+      optionsContainer.querySelectorAll('.client-option').forEach((clientOption) => {
+        clientOption.classList.toggle(
+          'selected',
+          clientOption.querySelector('input').checked
+        );
+      });
+      get('#confirm-budget-client').disabled = false;
+    };
+
+    const name = document.createElement('span');
+    name.textContent = client[3];
+    option.append(radio, name);
+    optionsContainer.append(option);
+  });
+}
+
+function openBudgetClientSelection() {
+  const form = get('#form');
+  selectedBudgetClientCode = '';
+  delete form.dataset.index;
+  form.dataset.mode = 'budget-client-selection';
+  get('#modal-title').textContent = 'Selecionar cliente';
+  form.innerHTML = `
+    <label class="modal-search">Pesquisar cliente
+      <input id="budget-client-search" type="search" placeholder="Digite o nome do cliente" autocomplete="off">
+    </label>
+    <div class="client-options" id="budget-client-options"></div>
+    <div class="footer">
+      <button class="secondary" type="button" id="cancel">Cancelar</button>
+      <button class="primary" id="confirm-budget-client" disabled>CONFIRMAR</button>
+    </div>
+  `;
+
+  renderBudgetClientOptions();
+  get('#budget-client-search').oninput = (event) => {
+    renderBudgetClientOptions(event.target.value);
+    get('#confirm-budget-client').disabled = !selectedBudgetClientCode;
+  };
+  get('#cancel').onclick = closeModal;
+  get('#overlay').classList.remove('hidden');
+}
+
+function renderBudgetProductOptions(search = '', category = '') {
+  const productsContainer = get('#budget-products');
+  const products = filterBudgetProducts(data.itens, { search, category });
+  productsContainer.replaceChildren();
+
+  if (products.length === 0) {
+    const emptyMessage = document.createElement('p');
+    emptyMessage.className = 'empty-options';
+    emptyMessage.textContent = 'Nenhum produto encontrado.';
+    productsContainer.append(emptyMessage);
+    return;
+  }
+
+  products.forEach((product) => {
+    const productRow = document.createElement('div');
+    productRow.className = 'budget-product';
+    productRow.classList.toggle('selected', Number(budgetQuantities[product[0]]) > 0);
+
+    const details = document.createElement('div');
+    const name = document.createElement('strong');
+    const description = document.createElement('span');
+    const value = document.createElement('span');
+    name.textContent = product[2];
+    description.textContent = product[3];
+    value.textContent = formatCurrency(product[4]);
+    details.append(name, description, value);
+
+    const quantityLabel = document.createElement('label');
+    quantityLabel.textContent = 'Quantidade';
+    const quantity = document.createElement('input');
+    quantity.type = 'text';
+    quantity.inputMode = 'numeric';
+    quantity.pattern = '[0-9]*';
+    quantity.value = budgetQuantities[product[0]] ?? '0';
+    quantity.dataset.productCode = String(product[0]);
+    quantity.oninput = () => {
+      quantity.value = quantity.value.replace(/\D/g, '');
+      budgetQuantities[product[0]] = quantity.value;
+      productRow.classList.toggle('selected', Number(quantity.value) > 0);
+      get('#budget-items-error').classList.add('hidden');
+    };
+    quantityLabel.append(quantity);
+
+    productRow.append(details, quantityLabel);
+    productsContainer.append(productRow);
+  });
+}
+
+function openBudgetItemsForm() {
+  const form = get('#form');
+  const selectedClient = data.clientes.find(
+    (client) => String(client[0]) === selectedBudgetClientCode
+  );
+  budgetQuantities = {};
+  form.dataset.mode = 'budget-items';
+  get('#modal-title').textContent = 'Itens do orçamento';
+  form.innerHTML = `
+    <p class="selected-client" id="selected-budget-client"></p>
+    <label class="budget-validity">Data de validade
+      <input required name="validade" type="date">
+    </label>
+    <div class="budget-product-filters">
+      <label>Pesquisar produto
+        <input id="budget-product-search" type="search" placeholder="Nome ou descrição" autocomplete="off">
+      </label>
+      <label>Categoria
+        <select id="budget-product-category"><option value="">Todas</option></select>
+      </label>
+    </div>
+    <div class="budget-products" id="budget-products"></div>
+    <p class="form-error hidden" id="budget-items-error" role="alert">
+      Selecione ao menos um item com quantidade maior que zero.
+    </p>
+    <div class="footer">
+      <button class="secondary" type="button" id="exit-budget-items">SAIR</button>
+      <button class="primary">SALVAR ORÇAMENTO</button>
+    </div>
+  `;
+
+  get('#selected-budget-client').textContent = `Cliente: ${selectedClient[3]}`;
+  const categoryFilter = get('#budget-product-category');
+  data.categorias.forEach((category) => {
+    categoryFilter.append(new Option(category[1], category[1]));
+  });
+  const applyProductFilters = () => renderBudgetProductOptions(
+    get('#budget-product-search').value,
+    categoryFilter.value
+  );
+  get('#budget-product-search').oninput = applyProductFilters;
+  get('#budget-product-search').onkeydown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+    }
+  };
+  categoryFilter.onchange = applyProductFilters;
+  renderBudgetProductOptions();
+
+  get('#exit-budget-items').onclick = closeModal;
 }
 
 function closeModal() {
@@ -195,6 +401,12 @@ function removeRecord(index) {
   );
 
   if (confirmed) {
+    if (state.currentPage === 'orcamentos') {
+      const budgetCode = data.orcamentos[index][0];
+      data.itensOrcamento = data.itensOrcamento.filter(
+        (item) => item[0] !== budgetCode
+      );
+    }
     data[state.currentPage].splice(index, 1);
     render();
   }
@@ -229,7 +441,11 @@ function openNewRecord(button) {
   state.currentBudgetAction = state.currentPage === 'orcamentos' ? 'incluir' : 'listar';
   state.currentTablePage = 1;
   render();
-  openModal();
+  if (state.currentPage === 'orcamentos') {
+    openBudgetClientSelection();
+  } else {
+    openModal();
+  }
 }
 
 function selectClientAction(button) {
@@ -287,7 +503,15 @@ document.querySelectorAll('[data-budget-action]').forEach((button) => {
   button.onclick = () => selectBudgetAction(button);
 });
 
-get('#new').onclick = () => openModal();
+get('#new').onclick = () => {
+  if (state.currentPage === 'orcamentos') {
+    state.currentBudgetAction = 'incluir';
+    renderMenu();
+    openBudgetClientSelection();
+  } else {
+    openModal();
+  }
+};
 get('#filter').oninput = renderFirstPage;
 get('#client-type').onchange = renderFirstPage;
 get('#category-filter').onchange = renderFirstPage;
@@ -314,6 +538,44 @@ get('#form').onsubmit = (event) => {
   event.preventDefault();
 
   const form = event.target;
+
+  if (form.dataset.mode === 'budget-client-selection') {
+    if (selectedBudgetClientCode) {
+      openBudgetItemsForm();
+    }
+    return;
+  }
+
+  if (form.dataset.mode === 'budget-items') {
+    const selectedClient = data.clientes.find(
+      (client) => String(client[0]) === selectedBudgetClientCode
+    );
+    const budgetCode = getNextRecordCode(data.orcamentos);
+    const budgetItems = createBudgetItemRecords({
+      budgetCode,
+      products: data.itens,
+      quantities: budgetQuantities
+    });
+
+    if (budgetItems.length === 0) {
+      get('#budget-items-error').classList.remove('hidden');
+      return;
+    }
+
+    data.orcamentos.push(createBudgetRecord({
+      code: budgetCode,
+      client: selectedClient[3],
+      clientCode: selectedClient[0],
+      validity: form.elements.validade.value,
+      total: calculateBudgetTotal(budgetItems)
+    }));
+    data.itensOrcamento.push(...budgetItems);
+    state.currentTablePage = Math.ceil(data.orcamentos.length / recordsPerPage);
+    closeModal();
+    render();
+    return;
+  }
+
   const categoryField = form.elements.categoria;
 
   if (state.currentPage === 'itens' && categoryField) {
@@ -342,7 +604,7 @@ get('#form').onsubmit = (event) => {
   if (state.currentPage === 'itens') {
     const recordCode = index !== undefined
       ? data.itens[index][0]
-      : recordPrefixes.itens + String(data.itens.length + 1).padStart(4, '0');
+      : getNextRecordCode(data.itens);
     const registrationDate = index !== undefined
       ? data.itens[index][5]
       : new Date().toLocaleDateString('pt-BR');
@@ -359,12 +621,28 @@ get('#form').onsubmit = (event) => {
       data.itens.push(productRecord);
       state.currentTablePage = Math.ceil(data.itens.length / recordsPerPage);
     }
+  } else if (state.currentPage === 'orcamentos') {
+    const existingRecord = index !== undefined ? data.orcamentos[index] : undefined;
+    const recordCode = existingRecord?.[0] ?? getNextRecordCode(data.orcamentos);
+    const budgetRecord = createBudgetRecord({
+      code: recordCode,
+      client: values[0],
+      clientCode: data.clientes.find((client) => client[3] === values[0])?.[0],
+      validity: values[1],
+      existingRecord
+    });
+
+    if (index !== undefined) {
+      data.orcamentos[index] = budgetRecord;
+    } else {
+      data.orcamentos.push(budgetRecord);
+      state.currentTablePage = Math.ceil(data.orcamentos.length / recordsPerPage);
+    }
   } else if (index !== undefined) {
     const recordCode = data[state.currentPage][index][0];
     data[state.currentPage][index] = [recordCode, ...values];
   } else {
-    const nextRecordNumber = String(data[state.currentPage].length + 1).padStart(4, '0');
-    const recordCode = recordPrefixes[state.currentPage] + nextRecordNumber;
+    const recordCode = getNextRecordCode(data[state.currentPage]);
     data[state.currentPage].push([recordCode, ...values]);
     state.currentTablePage = Math.ceil(
       data[state.currentPage].length / recordsPerPage

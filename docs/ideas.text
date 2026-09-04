@@ -154,7 +154,8 @@ main menu
         - Inserir; butao7; cadastrar uma nova categoria.
             
                 Inserir, incluir um registro de um novo Orçamento (TabelaOrçamento);
-                Ao clicar Inserir(butao7), uma lista com todos os Nomes dos clientes(TabelaCliente) registrados aparecer para selecionar; ter um botao Confirmar(botao8);
+                Ao clicar Inserir(butao7), uma lista com todos os Nomes dos clientes(TabelaCliente) registrados aparecer para selecionar; 
+                ter um botao Confirmar(botao8);
 
                 Ao clicar Confirmar(botao8) aparece uma lista(mini menu) 
                     - com o Nome do Produto(TabelaItensProdutos); 
@@ -180,6 +181,7 @@ main menu
 
         -TabelaItensOrçamento
 
+            • Código do orçamento (gerado automaticamente - imutavel).
             • Código do produto (vem da TabelaItensProdutos).
             • Nome Produto (vem da TabelaItensProdutos).  
             • Quantidade. 
