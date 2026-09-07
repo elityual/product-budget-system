@@ -2,6 +2,10 @@ import { expect } from '@playwright/test';
 import { data as fixtures } from '../../tests/fixtures/workspace.js';
 
 export async function backend(page, initial = fixtures, isAdmin = true) {
+  await page.addInitScript(() => {
+    localStorage.setItem('atlas.storage.mode', 'supabase');
+    localStorage.setItem('atlas.supabase.config', JSON.stringify({ url: 'https://supabase.test.invalid', key: 'test-key' }));
+  });
   let payload = structuredClone(initial);
   let revision = payload ? 1 : 0;
   let fail = false;
@@ -10,7 +14,7 @@ export async function backend(page, initial = fixtures, isAdmin = true) {
   let nextCategoryCode = 600;
   let nextProductCode = 700;
   let nextBudgetCode = 800;
-  await page.route('https://dnvfbfjgufgcokjmqsji.supabase.co/**', async (route) => {
+  await page.route('https://supabase.test.invalid/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/token')) {
       const { password } = route.request().postDataJSON();
@@ -45,7 +49,7 @@ export async function backend(page, initial = fixtures, isAdmin = true) {
         return [newBudgetCode, ...row.slice(1)];
       });
       payload.itensOrcamento = payload.itensOrcamento.map((row) => row[0] === null ? [newBudgetCode, ...row.slice(1)] : row);
-      return route.fulfill({ json: { revision: ++revision, payload } });
+      return route.fulfill({ json: { revision: ++revision, payload, approved_codes: approvedCodes } });
     }
     if (path.endsWith('/logout')) return route.fulfill({ status: 204 });
     return route.abort();

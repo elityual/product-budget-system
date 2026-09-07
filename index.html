@@ -15,19 +15,37 @@
 <body>
   <!-- Cabeçalho do sistema, inspirado na faixa escura da referência. -->
   <header class="topbar">
-    <div class="brand"><img class="brand-icon" src="assets/icons/atlas.svg" alt="" width="40" height="40"> Atlas Máquinas & Obras</div>
+    <div class="brand"><img class="brand-icon" src="assets/icons/atlas.svg" alt="" width="40" height="40"> <span id="brand-name">Atlas Máquinas & Obras</span></div>
 
-    <span>Gestão comercial • <time id="current-date"></time></span><b>GC</b>
+    <span>Gestão comercial • <time id="current-date"></time></span>
+    <div id="storage-actions" class="hidden">
+      <button type="button" id="download-backup" title="Baixar backup">Backup</button>
+      <button type="button" id="restore-backup" title="Restaurar backup">Restaurar</button>
+      <input id="restore-file" type="file" accept="application/json" hidden>
+    </div>
+    <b>GC</b>
 
   </header>
 
   <section id="auth-panel" class="auth-panel">
-    <h1>Entrar no sistema</h1>
+    <h1>Iniciar o sistema</h1>
+    <label>Armazenamento
+      <select id="storage-mode">
+        <option value="supabase">Supabase (nuvem)</option>
+        <option value="local">Banco local neste computador</option>
+      </select>
+    </label>
+    <div id="supabase-settings">
+      <label>URL do projeto Supabase<input id="supabase-url" type="url" placeholder="https://seu-projeto.supabase.co" autocomplete="url"></label>
+      <label>Chave publishable<input id="supabase-key" type="password" placeholder="sb_publishable_..." autocomplete="off"></label>
+    </div>
+    <label id="company-setting">Nome da empresa<input id="company-name" type="text" value="Atlas Máquinas & Obras" maxlength="160" autocomplete="organization"></label>
     <form id="auth-form">
       <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
       <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
       <button class="primary" type="submit">ENTRAR</button>
     </form>
+    <p id="local-help" class="hidden">O banco local não exige login. Os dados ficam neste computador.</p>
     <p id="auth-error" role="alert"></p>
   </section>
   <main class="hidden" id="application">

@@ -4,7 +4,7 @@ import { pages } from './config.js';
 import { createField, setupComboboxes, setupDropdowns } from './form.js';
 import { formatCnpj, formatCpf, validateRecord } from './validation.js';
 import { getDeletionError, updateRelatedRecords } from './relations.js';
-import { confirmPassword, approveBudget } from './backend.js';
+import { confirmPassword, approveBudget, storageMode } from './backend.js';
 import { formatDateForInput, createBudgetRecord } from './budget.js';
 import { recordsPerPage } from './table.js';
 export function createRecords({ render, resetFilters, persist, isSaving, setSaving, submitBudget, editBudget }) {
@@ -227,18 +227,20 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
     );
 
     if (confirmed) {
-      const password = await askDeletionPassword();
-      if (password === null) return;
-      setSaving(true);
-      get('#application').inert = true;
-      try {
-        await confirmPassword(password);
-      } catch (error) {
-        alert(error.message);
-        return;
-      } finally {
-        setSaving(false);
-        get('#application').inert = false;
+      if (storageMode() === 'supabase') {
+        const password = await askDeletionPassword();
+        if (password === null) return;
+        setSaving(true);
+        get('#application').inert = true;
+        try {
+          await confirmPassword(password);
+        } catch (error) {
+          alert(error.message);
+          return;
+        } finally {
+          setSaving(false);
+          get('#application').inert = false;
+        }
       }
       const previous = structuredClone(data);
       if (state.currentPage === 'orcamentos') {

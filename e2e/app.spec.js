@@ -2,6 +2,16 @@ import { test, expect } from '@playwright/test';
 import { data as fixtures } from '../tests/fixtures/workspace.js';
 import { backend, section } from './helpers/backend.js';
 
+test('modo local abre sem login e apresenta ferramentas de backup', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#storage-mode').selectOption('local');
+  await page.locator('#company-name').fill('Empresa local de teste');
+  await page.getByRole('button', { name: 'ABRIR BANCO LOCAL', exact: true }).click();
+  await expect(page.locator('#application')).toBeVisible();
+  await expect(page.locator('#storage-actions')).toBeVisible();
+  await expect(page.locator('#brand-name')).toHaveText('Empresa local de teste');
+});
+
 test('CRUD de categoria persiste, renomeia produtos e bloqueia exclusão em uso', async ({ page }) => {
   const api = await backend(page);
   page.on('dialog', (dialog) => dialog.accept());
@@ -161,7 +171,11 @@ test('usuário novo cadastra cliente validado, recarrega e sai sem manter dados 
 });
 
 test('falha de login mantém aplicação fechada e informa erro', async ({ page }) => {
-  await page.route('https://dnvfbfjgufgcokjmqsji.supabase.co/**', (route) =>
+  await page.addInitScript(() => {
+    localStorage.setItem('atlas.storage.mode', 'supabase');
+    localStorage.setItem('atlas.supabase.config', JSON.stringify({ url: 'https://supabase.test.invalid', key: 'test-key' }));
+  });
+  await page.route('https://supabase.test.invalid/**', (route) =>
     route.fulfill({ status: 401, json: {} })
   );
   await page.goto('/');

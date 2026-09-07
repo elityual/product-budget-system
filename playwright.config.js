@@ -9,8 +9,9 @@ export default defineConfig({
     trace: 'retain-on-failure'
   },
   webServer: {
-    command: 'python -m http.server 8765 --bind 127.0.0.1',
+    command: 'node server.js',
     url: 'http://127.0.0.1:8765',
-    reuseExistingServer: false
+    reuseExistingServer: false,
+    env: { ATLAS_DATA_DIR: '.test-data' }
   }
 });

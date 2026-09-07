@@ -43,7 +43,7 @@ export function formatCnpj(value) {
     .replace(/^([A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z0-9]{3}\/[A-Z0-9]{4})(\d)/, '$1-$2');
 }
 
-// Returns normalized fields without mutating either the input or stored records.
+// Retorna campos normalizados sem alterar a entrada nem os registros armazenados.
 export function validateRecord(page, input, records, editingIndex) {
   const values = Object.fromEntries(Object.entries(input).map(([key, value]) => [key, normalizeText(value)]));
   const errors = {};

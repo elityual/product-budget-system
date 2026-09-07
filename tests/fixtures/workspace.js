@@ -1,4 +1,4 @@
-// Example workspace shared by browser and migration tests.
+// Workspace de exemplo compartilhado pelos testes do navegador e do banco.
 export const data = {
   clientes: [
     [1, 'Pessoa Jurídica', '11.222.333/0001-81', 'Construtora Horizonte'],

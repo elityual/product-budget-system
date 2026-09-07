@@ -40,6 +40,9 @@ select { cursor: pointer; }
 .brand-icon { display: block; width: 40px; height: 40px; flex: 0 0 40px; }
 .topbar span { margin-left: auto; color: #d8dadd; }
 .topbar b { width: 37px; height: 37px; display: grid; place-items: center; border-radius: 50%; background: #f8d2bd; color: #563422; }
+#storage-actions { display: flex; gap: 6px; margin-left: auto; }
+#storage-actions button { padding: 7px 10px; border: 1px solid #d8dadd; background: transparent; color: white; cursor: pointer; }
+#storage-actions button:hover { background: var(--orange); border-color: var(--orange); }
 
 /* Colunas de navegação e área de trabalho. */
 
@@ -118,6 +121,9 @@ tr:hover td { background: #fff9f5; }
 
 .hidden { display: none; }
 .auth-panel { max-width: 540px; margin: 40px auto; padding: 24px; background: white; }
+.auth-panel > label, #supabase-settings label { display: grid; gap: 6px; margin: 12px 0; }
+.auth-panel select, .auth-panel input { width: 100%; min-height: 40px; padding: 8px; border: 1px solid var(--line); }
+.auth-panel #supabase-settings { padding: 4px 0 8px; border-bottom: 1px solid var(--line); }
 .auth-panel form, #delete-password form { grid-template-columns: 1fr; }
 #auth-error { color: #a32020; }
 #delete-password { max-width: min(450px, 95vw); border: 1px solid var(--line); }
@@ -206,7 +212,7 @@ button:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; box-shad
   .budget-product-filters { grid-template-columns: 1fr; }
 }
 
-/* Two-column budget draft, stacked on smaller screens. */
+/* Rascunho de orçamento em duas colunas, empilhado em telas menores. */
 .modal:has(#form[data-mode="budget-items"]) { width: min(1100px, 100%); max-height: 95vh; overflow-y: auto; }
 .budget-workspace { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
 .budget-catalog, .budget-summary { min-width: 0; display: flex; flex-direction: column; gap: 14px; }

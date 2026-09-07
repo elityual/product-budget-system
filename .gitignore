@@ -1,5 +1,12 @@
 node_modules/
+.npm-cache/
 test-results/
 playwright-report/
 .env
 .env.*
+.local-data/
+.test-data/
+*.sqlite
+*.sqlite-*
+backups/
+release/
