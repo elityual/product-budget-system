@@ -39,6 +39,7 @@ test('shared migration preserves accounts and enforces admin deletion on the ser
     await db.exec(await sql('202609060006_budget_permissions.sql'));
     await db.exec(await sql('202609060007_budget_approval.sql'));
     await db.exec(await sql('202609060008_budget_client_order.sql'));
+    await db.exec(await sql('202609070009_budget_order_compatibility.sql'));
     await db.exec(await readFile(new URL('../supabase/tests/authorization.sql', import.meta.url), 'utf8'));
     await db.exec(`insert into public.atlas_admins values ('${owner}')`);
     await login(editor);
@@ -127,5 +128,51 @@ test('shared migration aborts without losing data when legacy accounts have dupl
       await login(id);
       assert.deepEqual((await load()).payload,legacyFixtures);
     }
+  } finally { await db.close(); }
+});
+
+test('ISS-019 saves current budget order directly and rejects legacy input atomically', async () => {
+  const {db,login,save,load} = await setup();
+  try {
+    for (const name of ['202609060005_shared_access.sql','202609060006_budget_permissions.sql','202609060007_budget_approval.sql','202609060008_budget_client_order.sql']) await db.exec(await sql(name));
+    await login(editor);
+    const before = await load();
+    const legacy = structuredClone(before);
+    const client = legacy.payload.clientes[0];
+    legacy.payload.orcamentos.push([null,client[3],client[0],'07/09/2026','30/09/2026',0]);
+    const product = legacy.payload.itens[0];
+    legacy.payload.itensOrcamento.push([null,product[0],product[2],2,product[4],0]);
+    await assert.rejects(save(legacy), /invalid input syntax for type bigint/);
+    assert.deepEqual(await load(),before);
+    await db.exec('reset role');
+    await db.exec(await sql('202609070009_budget_order_compatibility.sql'));
+    await login(editor);
+    assert.equal(await save(legacy),null);
+    legacy.revision = (await load()).revision;
+    await assert.rejects(save(legacy), error => error.code === '22023');
+    assert.deepEqual((await load()).payload,before.payload);
+    legacy.payload.orcamentos.at(-1).splice(1,2,client[0],client[3]);
+    const created = await save(legacy);
+    const budget = created.payload.orcamentos.at(-1);
+    assert.deepEqual(budget.slice(1,3),[client[0],client[3]]);
+    assert.equal(budget[5],2*product[4]);
+    const edit = structuredClone(created);
+    const other = edit.payload.clientes[1];
+    edit.payload.orcamentos.at(-1).splice(1,2,other[0],other[3]);
+    const edited = await save(edit);
+    assert.deepEqual(edited.payload.orcamentos.at(-1).slice(1,3),[other[0],other[3]]);
+    const current = structuredClone(edited);
+    current.payload.orcamentos.push([null,client[0],client[3],'07/09/2026','30/09/2026',0]);
+    current.payload.itensOrcamento.push([null,product[0],product[2],1,product[4],0]);
+    const saved = await save(current);
+    assert.equal(saved.payload.orcamentos.at(-1)[1],client[0]);
+    for (const row of [null,{},[],[null,client[3],client[0],'07/09/2026','30/09/2026',0],[null,'123','456','07/09/2026','30/09/2026',0],[null,1.5,'Client','07/09/2026','30/09/2026',0]]) {
+      const invalid = structuredClone(saved);
+      invalid.payload.orcamentos.push(row);
+      await assert.rejects(save(invalid), error => error.code === '22023');
+      assert.deepEqual((await load()).payload,saved.payload);
+      assert.equal((await load()).revision,saved.revision);
+    }
+    await assert.rejects(db.query('select public.atlas_save_workspace_legacy_order($1,$2::jsonb)',[saved.revision,JSON.stringify(saved.payload)]), /does not exist/);
   } finally { await db.close(); }
 });

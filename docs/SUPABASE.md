@@ -4,7 +4,7 @@ O código atual usa um único workspace compartilhado. Todos os usuários autent
 
 ## Instalação e atualização
 
-1. Aplique somente as migrações pendentes de `supabase/migrations/`, em ordem, de 001 até `202609060008_budget_client_order.sql`. Não repita migrações aplicadas. Não exclua tabelas para forçar execução.
+1. Aplique somente as migrações pendentes de `supabase/migrations/`, em ordem, de 001 até `202609070009_budget_order_compatibility.sql`. Não repita migrações aplicadas. Não exclua tabelas para forçar execução.
 2. A 005 reúne as contas antigas em um workspace, preservando códigos, datas, preços e referências. Se houver códigos duplicados entre contas, documentos repetidos ou descrições equivalentes, ela falha e reverte tudo. Nesse caso, revise os conflitos e suas referências antes de tentar novamente; não há deduplicação automática.
 3. Crie contas confirmadas em Authentication > Users. A aplicação oferece login, mas não cadastro ou recuperação de senha.
 4. Defina o administrador no SQL Editor, conforme a seção abaixo. Nenhuma conta recebe administração automaticamente.
@@ -72,7 +72,7 @@ No navegador, use uma conta comum e uma administradora em sessões separadas:
 
 ## Testes locais e sessão
 
-`npm test` testa o histórico 001–004 em `tests/database.test.js` e a sequência compartilhada 005–008 em `tests/shared.test.js`, incluindo dados de duas contas, conflitos legados, autorização, exclusão, aprovação, ordem dos campos e preservação após apagar uma conta Auth. PGlite executa PostgreSQL local; apenas o contexto Auth é simulado. Os testes de navegador em `e2e/app.spec.js` simulam as respostas Supabase. Nenhum desses testes comprova implantação remota.
+`npm test` testa o histórico 001–004 em `tests/database.test.js` e a sequência compartilhada 005–009 em `tests/shared.test.js`, incluindo dados de duas contas, conflitos legados, autorização, exclusão, aprovação, ordem dos campos e preservação após apagar uma conta Auth. PGlite executa PostgreSQL local; apenas o contexto Auth é simulado. Os testes de navegador em `e2e/app.spec.js` simulam as respostas Supabase. Nenhum desses testes comprova implantação remota.
 
 A sessão usa sessionStorage e não renova tokens automaticamente. Sair limpa os dados visíveis imediatamente e remove o token mesmo se o logout remoto falhar. Erros de gravação restauram o snapshot anterior. Após conflito ou resultado de rede incerto, recarregue para obter os dados confirmados.
 
@@ -101,3 +101,10 @@ A aprovação é iniciada exclusivamente pelo botão do cabeçalho Aprovar orça
 ## Limpar e carregar dados simples
 
 Depois de aplicar até a migração 008, abra `supabase/seeds/reset_simple_data.sql`, copie o arquivo inteiro para o SQL Editor e execute uma vez. Ele substitui todo o conteúdo de `cliente`, `categoria`, `produto`, `orcamento` e `item_orcamento`, reinicia os códigos em 1 e cria uma carga pequena vinculada. O processo preserva `auth.users` e `atlas_admins`, avança a revisão do workspace e mostra as contagens finais. Recarregue todas as abas após o resultado. Para manter os dados atuais, não execute esse arquivo.
+
+
+## ISS-019 — gravação direta na ordem atual
+
+Implementado no código, com aplicação remota pendente: `supabase/migrations/202609070009_budget_order_compatibility.sql` substitui a RPC após 008 para gravar diretamente `[codigo, clienteCodigo, clienteNome, data, validade, total]`. Apesar do nome do arquivo, não há suporte à entrada legada: nome antes do código é rejeitado com `22023`, antes de qualquer alteração. A função `atlas_save_workspace_legacy_order` é removida; não há conversão intermediária. O cliente é vinculado pelo código no índice 1, e o nome retornado vem do JOIN com `cliente`.
+
+Autenticação, permissões, revisão global, aprovação, datas e sincronização transacional são preservadas. A migração avança a revisão; recarregue todas as abas com a interface atual antes de salvar. Não há nova dependência, serviço ou variável de ambiente. `tests/shared.test.js` cobre inclusão e edição na ordem atual, rejeição da ordem antiga e de entradas inválidas, conflitos e preservação do estado após falha. A migração 008 permanece como histórico; a 009 substitui seu adaptador.

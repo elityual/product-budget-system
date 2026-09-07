@@ -175,6 +175,8 @@ Validação local mais recente: `npm run check`, `npm test` (32 testes) e `npm r
 
 ## ISS-019
 
+Correção implementada na migração 009; aplicação e validação remotas pendentes. A RPC grava diretamente a ordem atual (código do cliente antes do nome), rejeita a ordem antiga com 22023 e remove o adaptador legado. O log isolado não comprova a origem do payload invertido. Teste de regressão em `tests/shared.test.js`.
+
 {
 2  "host": "db-dnvfbfjgufgcokjmqsji",
 3  "identifier": "dnvfbfjgufgcokjmqsji",

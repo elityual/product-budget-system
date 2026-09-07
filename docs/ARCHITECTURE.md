@@ -58,7 +58,7 @@ As RPCs preservam o contrato de arrays, identity, datas, FKs e totais. A RPC de 
 
 ## Testes e comandos
 
-`npm run check` valida sintaxe; `npm test` executa `tests/*.test.js`, incluindo `database.test.js` (histórico 001–004) e `shared.test.js` (sequência 005–008 e carga simples) com `@electric-sql/pglite`: aplica as oito migrações em PostgreSQL local e verifica backfill, CRUD, códigos, datas, cálculos, rollback, RLS, FKs, aprovação, ordem dos campos e reset dos dados. Apenas o contexto Auth é simulado. `npm run test:e2e` usa `@playwright/test` em `e2e/app.spec.js`; `playwright.config.js` inicia Python na porta 8765 e aceita `PLAYWRIGHT_CHANNEL` opcional, por exemplo `msedge`. Requer Node.js 22+, Python 3 e navegador instalado via Playwright ou canal configurado. Dependências de desenvolvimento estão em `package-lock.json`; não há dependência de runtime.
+`npm run check` valida sintaxe; `npm test` executa `tests/*.test.js`, incluindo `database.test.js` (histórico 001–004) e `shared.test.js` (sequência 005–009 e carga simples) com `@electric-sql/pglite`: aplica as oito migrações em PostgreSQL local e verifica backfill, CRUD, códigos, datas, cálculos, rollback, RLS, FKs, aprovação, ordem dos campos e reset dos dados. Apenas o contexto Auth é simulado. `npm run test:e2e` usa `@playwright/test` em `e2e/app.spec.js`; `playwright.config.js` inicia Python na porta 8765 e aceita `PLAYWRIGHT_CHANNEL` opcional, por exemplo `msedge`. Requer Node.js 22+, Python 3 e navegador instalado via Playwright ou canal configurado. Dependências de desenvolvimento estão em `package-lock.json`; não há dependência de runtime.
 
 A suíte de navegador cobre CRUD, relações, confirmação, senha, navegação móvel, filtros, orçamento/itens, recarga e falhas/conflitos, com respostas Supabase simuladas. `supabase/tests/authorization.sql` testa compartilhamento e permissões em transação revertida, com resultado remoto apresentado pelo usuário. `.gitignore` exclui dependências, relatórios, traces e arquivos `.env`.
 
@@ -72,7 +72,7 @@ Validação de DVs no servidor, recuperação de senha, renovação automática 
 
 As ações da tabela usam `data-action` e `data-index` com listener delegado no corpo da tabela. `html.js` fornece escape HTML compartilhado para `form.js` e `table.js`.
 
-Os cenários de navegador ficam em `e2e/app.spec.js`, com simulação do backend em `e2e/helpers/backend.js`. Navegador e testes SQL compartilham `tests/fixtures/workspace.js`, que não é importado pelos módulos de produção; `workspace-legacy.js` preserva o contrato anterior à 008. As migrações 001–004 permanecem como histórico, e 005–008 evoluem compartilhamento, permissões, aprovação e ordem do cliente.
+Os cenários de navegador ficam em `e2e/app.spec.js`, com simulação do backend em `e2e/helpers/backend.js`. Navegador e testes SQL compartilham `tests/fixtures/workspace.js`, que não é importado pelos módulos de produção; `workspace-legacy.js` preserva o contrato anterior à 008. As migrações 001–004 permanecem como histórico, e 005–009 evoluem compartilhamento, permissões, aprovação e ordem do cliente.
 
 ### Novo orçamento: seleção e revisão de itens
 
@@ -111,3 +111,10 @@ No submenu Orçamentos aprovados, a única ação por linha é Baixar PDF, que a
 A aprovação é iniciada exclusivamente pelo botão do cabeçalho Aprovar orçamento. `records.js` monta a janela com elementos DOM e `textContent`, permite pesquisa por cliente ou código e apresenta código, cliente, data de criação e validade. A opção selecionada recebe o mesmo destaque usado na seleção de cliente do novo orçamento. Enter no campo de pesquisa não submete o formulário. Sem pendentes, o botão fica desabilitado. O submenu Orçamentos aprovados mantém apenas a ação PDF por linha. Não é necessária nova migração para essa mudança de interface.
 
 `config.js` e `listing.js` exibem Código do cliente antes de Cliente nas listagens geral e de aprovados. O contrato posicional atual de `orcamentos` é `[codigo, clienteCodigo, clienteNome, data, validade, total]`. A migração 008 adapta `atlas_load_workspace()` e `atlas_save_workspace()` a essa ordem; a tabela `orcamento` já guarda `cliente_codigo`, e o nome continua derivado por `JOIN` com `cliente`. A revisão global é incrementada para impedir gravações de snapshots abertos com o contrato anterior.
+
+
+## ISS-019 — gravação direta na ordem atual
+
+Implementado no código, com aplicação remota pendente: `supabase/migrations/202609070009_budget_order_compatibility.sql` substitui a RPC após 008 para gravar diretamente `[codigo, clienteCodigo, clienteNome, data, validade, total]`. Apesar do nome do arquivo, não há suporte à entrada legada: nome antes do código é rejeitado com `22023`, antes de qualquer alteração. A função `atlas_save_workspace_legacy_order` é removida; não há conversão intermediária. O cliente é vinculado pelo código no índice 1, e o nome retornado vem do JOIN com `cliente`.
+
+Autenticação, permissões, revisão global, aprovação, datas e sincronização transacional são preservadas. A migração avança a revisão; recarregue todas as abas com a interface atual antes de salvar. Não há nova dependência, serviço ou variável de ambiente. `tests/shared.test.js` cobre inclusão e edição na ordem atual, rejeição da ordem antiga e de entradas inválidas, conflitos e preservação do estado após falha. A migração 008 permanece como histórico; a 009 substitui seu adaptador.

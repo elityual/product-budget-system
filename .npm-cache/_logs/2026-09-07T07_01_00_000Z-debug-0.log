@@ -1,0 +1,37 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.6.1
+2 info using node@v24.11.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\guici\Desktop\SaberTI16\Product and Budget Control System\.npmrc
+5 silly config load:file:C:\Users\guici\.npmrc
+6 silly config load:file:C:\Users\guici\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm ci
+8 verbose argv "ci" "--cache" ".npm-cache" "--no-audit" "--no-fund"
+9 verbose logfile logs-max:10 dir:C:\Users\guici\Desktop\SaberTI16\Product and Budget Control System\.npm-cache\_logs\2026-09-07T07_01_00_000Z-
+10 verbose logfile C:\Users\guici\Desktop\SaberTI16\Product and Budget Control System\.npm-cache\_logs\2026-09-07T07_01_00_000Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly reify moves {}
+15 http cache @playwright/test@https://registry.npmjs.org/@playwright/test/-/test-1.63.0.tgz 0ms (cache hit)
+16 http cache @electric-sql/pglite@https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.5.8.tgz 0ms (cache hit)
+17 http cache playwright-core@https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz 0ms (cache hit)
+18 silly tarball no local data for @playwright/test@https://registry.npmjs.org/@playwright/test/-/test-1.63.0.tgz. Extracting by manifest.
+19 http cache playwright@https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz 0ms (cache hit)
+20 silly tarball no local data for @electric-sql/pglite@https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.5.8.tgz. Extracting by manifest.
+21 silly tarball no local data for playwright-core@https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz. Extracting by manifest.
+22 silly tarball no local data for playwright@https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz. Extracting by manifest.
+23 http fetch GET 200 https://registry.npmjs.org/@playwright/test/-/test-1.63.0.tgz 494ms (cache miss)
+24 http fetch GET 200 https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz 817ms (cache miss)
+25 http fetch GET 200 https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz 1936ms (cache miss)
+26 http fetch GET 200 https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.5.8.tgz 2820ms (cache miss)
+27 silly ADD node_modules/playwright-core
+28 silly ADD node_modules/playwright
+29 silly ADD node_modules/@playwright/test
+30 silly ADD node_modules/@electric-sql/pglite
+31 verbose cwd C:\Users\guici\Desktop\SaberTI16\Product and Budget Control System
+32 verbose os Windows_NT 10.0.26200
+33 verbose node v24.11.0
+34 verbose npm  v11.6.1
+35 verbose exit 0
+36 info ok

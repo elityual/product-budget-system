@@ -14,7 +14,7 @@ A aplicação usa módulos ES, sem framework, dependências JavaScript de runtim
 2. Inicie o servidor: `python -m http.server 8000`.
 3. Abra `http://localhost:8000/` e entre com o usuário criado no Supabase.
 
-A URL e a chave pública estão em `assets/js/backend.js`. Todos os usuários autenticados consultam, incluem e editam os mesmos dados. Exclusão de clientes, categorias e produtos é exclusiva de administradores; orçamentos e seus itens podem ser excluídos por todos os autenticados. Aplique todas as migrações até a 008. Os dados de teste ficam em `tests/fixtures/workspace.js` e não são importados pela aplicação.
+A URL e a chave pública estão em `assets/js/backend.js`. Todos os usuários autenticados consultam, incluem e editam os mesmos dados. Exclusão de clientes, categorias e produtos é exclusiva de administradores; orçamentos e seus itens podem ser excluídos por todos os autenticados. Aplique todas as migrações até a 009. Os dados de teste ficam em `tests/fixtures/workspace.js` e não são importados pela aplicação.
 
 ## Validação e testes
 
@@ -87,7 +87,7 @@ npm.cmd run test:e2e
 | `supabase/migrations/202609060002_cliente.sql` | Tabela cliente, transferência dos clientes antigos e RPC de leitura |
 | `supabase/migrations/202609060003_cliente_identity.sql` | Código de cliente automático no PostgreSQL |
 | `supabase/migrations/202609060004_relational_tables.sql` | Categorias, produtos, orçamentos e itens em tabelas próprias, identity, FKs e RPCs |
-| `supabase/migrations/202609060005_shared_access.sql` a `202609060008_budget_client_order.sql` | Workspace compartilhado, permissões, aprovação e contrato atual dos orçamentos |
+| `supabase/migrations/202609060005_shared_access.sql` a `202609070009_budget_order_compatibility.sql` | Workspace compartilhado, permissões, aprovação e gravação direta dos orçamentos |
 | `supabase/seeds/reset_simple_data.sql` | Limpa os dados comerciais e cria uma carga pequena de exemplo, preservando contas e administradores |
 | `supabase/tests/authorization.sql` | Testes SQL com rollback |
 | `package.json`, `package-lock.json`, `.gitignore` | Comandos, dependências fixadas e exclusões de artefatos |
@@ -154,3 +154,10 @@ Nas listagens geral e de aprovados, Código do cliente aparece antes de Cliente.
 ## Carga simples de dados
 
 Depois de aplicar as migrações 001–008, execute `supabase/seeds/reset_simple_data.sql` inteiro no SQL Editor para substituir todos os dados comerciais por uma carga pequena. O script limpa itens, orçamentos, produtos, categorias e clientes, reinicia seus códigos identity e cadastra dois clientes, duas categorias, três produtos e um orçamento com dois itens. Usuários do Supabase Auth e `atlas_admins` são preservados. Ao terminar, recarregue todas as abas da aplicação.
+
+
+## ISS-019 — gravação direta na ordem atual
+
+Implementado no código, com aplicação remota pendente: `supabase/migrations/202609070009_budget_order_compatibility.sql` substitui a RPC após 008 para gravar diretamente `[codigo, clienteCodigo, clienteNome, data, validade, total]`. Apesar do nome do arquivo, não há suporte à entrada legada: nome antes do código é rejeitado com `22023`, antes de qualquer alteração. A função `atlas_save_workspace_legacy_order` é removida; não há conversão intermediária. O cliente é vinculado pelo código no índice 1, e o nome retornado vem do JOIN com `cliente`.
+
+Autenticação, permissões, revisão global, aprovação, datas e sincronização transacional são preservadas. A migração avança a revisão; recarregue todas as abas com a interface atual antes de salvar. Não há nova dependência, serviço ou variável de ambiente. `tests/shared.test.js` cobre inclusão e edição na ordem atual, rejeição da ordem antiga e de entradas inválidas, conflitos e preservação do estado após falha. A migração 008 permanece como histórico; a 009 substitui seu adaptador.

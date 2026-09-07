@@ -150,3 +150,10 @@ Nas listagens geral e de aprovados, as primeiras colunas são Código, Código d
 ## Carga simples para implantação
 
 Implementado em `supabase/seeds/reset_simple_data.sql`: após as migrações 001–008, o operador pode apagar todos os registros comerciais e carregar dois clientes, duas categorias, três produtos e um orçamento com dois itens. Os códigos são reiniciados e gerados pelos identity do PostgreSQL; referências e total são montados no SQL. A operação é transacional, preserva usuários e administradores e incrementa a revisão para exigir recarga das abas abertas.
+
+
+## ISS-019 — gravação direta na ordem atual
+
+Implementado no código, com aplicação remota pendente: `supabase/migrations/202609070009_budget_order_compatibility.sql` substitui a RPC após 008 para gravar diretamente `[codigo, clienteCodigo, clienteNome, data, validade, total]`. Apesar do nome do arquivo, não há suporte à entrada legada: nome antes do código é rejeitado com `22023`, antes de qualquer alteração. A função `atlas_save_workspace_legacy_order` é removida; não há conversão intermediária. O cliente é vinculado pelo código no índice 1, e o nome retornado vem do JOIN com `cliente`.
+
+Autenticação, permissões, revisão global, aprovação, datas e sincronização transacional são preservadas. A migração avança a revisão; recarregue todas as abas com a interface atual antes de salvar. Não há nova dependência, serviço ou variável de ambiente. `tests/shared.test.js` cobre inclusão e edição na ordem atual, rejeição da ordem antiga e de entradas inválidas, conflitos e preservação do estado após falha. A migração 008 permanece como histórico; a 009 substitui seu adaptador.
