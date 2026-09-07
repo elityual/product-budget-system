@@ -1,10 +1,4 @@
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
-}
+import { escapeHtml } from './html.js';
 
 export function createField(
   [name, label, type, options],
@@ -66,7 +60,7 @@ export function createField(
     return `<label>${label}<select name="${name}">${selectOptions}</select></label>`;
   }
 
-  const numberStep = type === 'number' ? ' step="0.01"' : '';
+  const numberStep = type === 'number' ? ' step="0.01" min="0.01"' : '';
   return `<label>${label}<input required name="${name}" type="${type}"${numberStep}></label>`;
 }
 
@@ -121,7 +115,6 @@ export function setupComboboxes(form) {
       setTimeout(() => {
         optionsContainer.classList.add('hidden');
         field.setAttribute('aria-expanded', 'false');
-        field.dispatchEvent(new Event('change', { bubbles: true }));
       }, 100);
     };
     field.onkeydown = (event) => {
@@ -139,6 +132,7 @@ export function setupComboboxes(form) {
         updateSelectedOption();
         optionsContainer.classList.add('hidden');
         field.setAttribute('aria-expanded', 'false');
+        field.dispatchEvent(new Event('change', { bubbles: true }));
       };
     });
   });

@@ -1,3 +1,5 @@
+import { escapeHtml } from './html.js';
+
 export const recordsPerPage = 10;
 
 export function filterRows(
@@ -36,16 +38,7 @@ export function formatCurrency(value) {
   }).format(Number(value));
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-export function createRow(row, index, currentPage) {
+export function createRow(row, index, currentPage, canDelete = false, approvedOnly = false) {
   const cells = row
     .map((value, column) => {
       const isItem = currentPage === 'itens';
@@ -78,12 +71,20 @@ export function createRow(row, index, currentPage) {
     `;
   }
 
+  const entity = { clientes: 'cliente', categorias: 'categoria', itens: 'produto', orcamentos: 'orçamento' }[currentPage] ?? 'registro';
+  const reference = escapeHtml(`${entity} de código ${row[0]}`);
+
+  if (currentPage === 'orcamentos' && approvedOnly) {
+    return `<tr>${cells}<td><button type="button" class="primary" data-action="print" data-index="${index}" aria-label="Baixar PDF do ${reference}">Baixar PDF</button></td></tr>`;
+  }
+
   return `
     <tr>
       ${cells}
       <td>
-        <button class="action" onclick="edit(${index})">✎</button>
-        <button class="action" onclick="removeRecord(${index})">⌫</button>
+        ${currentPage === 'orcamentos' ? `<button type="button" class="action" aria-label="Imprimir ${reference}" title="Imprimir / Salvar PDF" data-action="print" data-index="${index}"><span aria-hidden="true">⎙</span></button>` : ''}
+        <button type="button" class="action" aria-label="Editar ${reference}" title="Editar ${reference}" data-action="edit" data-index="${index}"><span aria-hidden="true">✎</span></button>
+        ${canDelete ? `<button type="button" class="action" aria-label="Excluir ${reference}" title="Excluir ${reference}" data-action="delete" data-index="${index}"><span aria-hidden="true">⌫</span></button>` : ''}
       </td>
     </tr>
   `;

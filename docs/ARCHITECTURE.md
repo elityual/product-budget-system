@@ -1,103 +1,113 @@
 # Arquitetura
 
-> Última revisão técnica: 4 de setembro de 2026.
+> Última revisão técnica: 7 de setembro de 2026.
 
 ## Visão geral
 
-A aplicação é uma página estática, sem framework e sem back-end. Ela usa módulos ES e deve ser carregada por um servidor HTTP estático:
+Interface estática com módulos ES, servida por HTTP, e cliente REST para Supabase Auth/PostgREST. ISS-003/004 concluídas conforme confirmação do usuário; instruções em [SUPABASE.md](SUPABASE.md).
 
-```text
-index.html
-   ├── assets/css/menu.css    → aparência e responsividade
-   └── assets/js/menu.js      → ponto de entrada
-          ├── config.js       → configuração das páginas
-          ├── budget.js       → filtros, montagem e cálculos de orçamento
-          ├── data.js         → dados demonstrativos
-          ├── form.js         → campos, comboboxes e dropdowns
-          └── table.js        → filtros, paginação e linhas
-```
+`index.html` carrega `app.js`, que importa configuração de páginas, estado, validação, renderização, relações, navegação e backend. Não existe framework, bundler ou SDK de runtime.
 
-Todo o estado da sessão existe em memória no JavaScript. Recarregar ou fechar a página restaura os dados demonstrativos definidos no código.
+## Componentes
 
-Defeitos e riscos que não representam por si só um requisito funcional são acompanhados em [`ISSUES.md`](ISSUES.md).
+- `index.html`: login, área principal, menu, filtros, tabela, paginação, modal de cadastro e dialog de senha para exclusão. Botões de ícone usam nomes acessíveis e símbolos ocultos da leitura assistiva.
+- `assets/css/app.css`: tema, layouts, filtros, componentes, foco visível, estados e menu móvel. O menu abre lateralmente até 760 px e o conteúdo permite rolagem horizontal da tabela.
+- `config.js`: metadados de páginas, colunas e campos. Os identificadores coincidem com `data` e atributos HTML.
+- `data.js`: workspace vazio mutável, estado de navegação, seletor DOM e fábrica `emptyData()`. Os dados de teste ficam em `tests/fixtures/workspace.js`; o SQL gera os códigos novos.
+- `app.js`: inicialização, data do cabeçalho, conexão dos controladores e persistência. `persist()` bloqueia interação durante a gravação e restaura o snapshot anterior em caso de falha.
+- `backend.js`: configuração pública `backendConfig`, requisições Auth/REST com timeout de 15 segundos, login, validação da senha de exclusão, logout, `loadData()` e `saveData()`. Usa `sessionStorage` com chave `atlas.auth` e não persiste senhas. Não renova tokens automaticamente.
+- `relations.js`: bloqueia excluir categorias usadas por produtos e clientes usados por orçamentos e produtos usados por itens de orçamento; atualiza produtos ao renomear categorias e nomes de clientes nos orçamentos pelo código.
+- `navigation.js`: controla menu móvel, `aria-expanded`, abertura com foco, Escape com retorno do foco, fechamento ao selecionar, clicar fora ou mover foco para fora. É uma navegação expansível, sem comportamento de diálogo modal.
+- `form.js`: geração dos campos, combobox pesquisável e dropdown sem pesquisa. Selecionar emite `change` imediatamente com propagação; blur do combobox valida/fecha sem emitir evento sintético adicional.
+- `validation.js`: valida CPF e CNPJ numérico/alfanumérico por tipo e DVs, normaliza textos, aplica máscaras e bloqueia duplicidades e preços inválidos. Comparação exclui o próprio registro na edição.
+- `budget.js`: busca, datas, registros e cálculos de orçamentos/itens; preserva a data e aceita o total recalculado na edição.
+- `table.js`: busca, filtros, paginação, formatação monetária e linhas com escape de HTML, inclusive nos nomes acessíveis das ações.
 
-## Responsabilidades dos arquivos
+## Fluxos e estado
 
-### `index.html`
+1. A página apresenta login. Uma sessão válida na aba tenta carregar o workspace; erro mantém login visível e exibe mensagem. Um usuário novo recebe os dados compartilhados existentes.
+2. Após carregar, `session.js` substitui `data`, limpa filtros e abre Clientes. O menu configura página e ação; tabelas mantêm índices originais ao filtrar/paginar, com 10 registros por página.
+3. Inclusão por botão ou submenu limpa pesquisa/tipo/categoria/status e retorna à primeira página. Cancelar mantém filtros limpos; editar preserva filtros. Salvar inclusão direciona à última página.
+4. Submit valida categoria e domínio, pede confirmação ao editar cliente/categoria/produto e monta os arrays. Em cliente/categoria, também atualiza os vínculos antes de salvar o snapshot inteiro.
+5. Novo orçamento seleciona cliente por código e preserva quantidades durante filtros de produtos. Exige validade e ao menos um item inteiro positivo; orçamento e itens são gravados juntos. Editar usa opções com valor igual ao código e texto com nome/código para distinguir homônimos; preserva a data e recalcula o total dos itens.
+6. Exclusão bloqueia vínculos em uso, pede confirmação e senha em dialog. Após verificar senha no Auth, remove o registro e, para orçamentos, seus itens. A RPC persiste todo o resultado atomicamente.
+7. Logout tenta revogar a sessão remota, sempre apaga credenciais locais, esvazia dados e retorna ao login. Após expirar o token, é necessário sair e entrar novamente.
 
-- Define a barra superior, a navegação lateral e a área principal.
-- Declara os botões de menu por meio dos atributos `data-page`, `data-new`, `data-menu`, `data-client-action`, `data-product-action` e `data-budget-action`.
-- Disponibiliza a pesquisa compartilhada por todas as tabelas, filtros contextuais de tipo, categoria e status, controles de paginação e elementos vazios (`thead`, `tbody` e `form`) preenchidos dinamicamente. Tipo de cliente e status usam a estrutura genérica de dropdown; categoria usa a estrutura genérica de combobox.
-- Contém o overlay e o contêiner do modal reutilizável.
-- Carrega o CSS e o ponto de entrada JavaScript com `type="module"`.
+## Persistência e autorização
 
-### `assets/css/menu.css`
+As migrações 001–004 criam e transferem os dados para tabelas relacionais. A 005 (`202609060005_shared_access.sql`) reúne essas tabelas em um workspace compartilhado e cria `atlas_admins`; 006 libera alterações de orçamentos, 007 adiciona aprovação e 008 atualiza a ordem posicional do cliente nos orçamentos. Códigos, datas e vínculos são preservados; conflitos legados de códigos/documentos/descrições abortam a migração integralmente.
 
-- Centraliza cores em propriedades personalizadas de `:root`.
-- Organiza a tela em barra superior, coluna de ícones, menu e conteúdo.
-- Estiliza botões, tabela, estados de produto e modal.
-- Mantém foco e seleção visíveis em campos, opções de categoria, clientes e produtos escolhidos no orçamento.
-- Define a barra de pesquisa e filtros de Produtos como padrão visual de todas as listagens, padronizando altura, borda, fundo e espaçamento; remove margens internas no contexto da barra e desenha o ícone de pesquisa em CSS.
-- Oculta submenus com `.sub.hidden`.
-- Em telas de até 760 px, oculta o menu lateral, reduz margens e transforma o formulário em uma coluna.
+`supabase/seeds/reset_simple_data.sql` é uma carga operacional separada das migrações. Em uma transação, bloqueia as tabelas comerciais, remove seus registros por `TRUNCATE`, reinicia as sequências identity, cria vínculos usando códigos retornados pelo SQL, recalcula o total do orçamento e avança a revisão global. O script não altera `auth.users` nem `atlas_admins`.
 
-### Módulos JavaScript
+A coluna legada user_id passa a identificar um workspace fixo, com CHECK e sem FK para auth.users. Assim, apagar uma conta não apaga dados comerciais. `atlas_workspaces` mantém uma única revisão global. RLS permite leitura a usuários autenticados não anônimos. Escritas diretas e helpers internos permanecem revogados.
 
-- `assets/js/data.js`: exporta os registros demonstrativos (`data`) e `getNextRecordCode()`, que gera códigos inteiros a partir do maior código da coleção.
-- `assets/js/budget.js`: filtra clientes e produtos, converte datas, monta registros de orçamento e itens e calcula o valor total, preservando data e total na edição.
-- `assets/js/config.js`: exporta `pages`, com textos, colunas e campos de cada página, e `clientActionContent`.
-- `assets/js/table.js`: concentra as regras puras `filterRows()` e `paginateRows()`, o limite `recordsPerPage`, a formatação monetária e a criação das linhas com escape de conteúdo textual.
-- `assets/js/form.js`: cria os campos do modal e controla os componentes genéricos de combobox pesquisável e dropdown sem pesquisa, usados em formulários e filtros.
-- `assets/js/menu.js`: ponto de entrada que mantém `state`, atualiza a data do cabeçalho, renderiza a interface, controla navegação e modal, conecta eventos e aplica as operações CRUD em memória.
+A RPC pública autentica, bloqueia a revisão global e verifica omissões de clientes, categorias e produtos antes de qualquer gravação: `atlas_is_admin()` é exigido para excluir clientes, categorias e produtos. A migração 006 libera exclusão de orçamentos e itens para todos os autenticados. A tabela de administradores é gerenciada apenas pelo operador do banco, nunca pelo cliente ou `user_metadata`. Todos os demais usuários podem incluir e editar, inclusive quantidades positivas de itens salvos. A resposta de leitura inclui `is_admin` e `approved_codes`; `backend.js` atualiza `permissions` e `approvedBudgets` em `data.js`, e os controladores ocultam ações proibidas. A verificação SQL é a autoridade mesmo se o navegador for modificado.
 
-### Testes e comandos
+As RPCs preservam o contrato de arrays, identity, datas, FKs e totais. A RPC de escrita retorna `{revision,payload}`; conflitos retornam null, inclusive entre contas diferentes. A senha de exclusão continua uma confirmação adicional da interface. DVs permanecem no cliente. Instruções de implantação e primeiro administrador estão em [SUPABASE.md](SUPABASE.md).
 
-- `package.json` declara o projeto como módulo ES e fornece `npm run check` e `npm test`; não adiciona dependências externas.
-- `tests/table.test.js` usa o executor nativo `node:test` para validar filtros, preservação de índices, paginação, formatação de linhas e escape de HTML.
-- `tests/budget.test.js` valida pesquisa de clientes, pesquisa e categoria de produtos, estrutura dos registros, campos imutáveis, conversão de datas, quantidades e cálculo de totais.
-- `tests/data.test.js` valida a geração numérica para coleções preenchidas, com lacunas ou vazias.
-- `tests/form.test.js` valida a estrutura do dropdown customizado sem campo de pesquisa.
+## Convenções
 
-## Fluxo de navegação e renderização
+- `cliente.codigo` usa `bigint GENERATED ALWAYS AS IDENTITY` com sequência global. A migração 003 preserva códigos antigos e ajusta a sequência acima do maior valor existente, sem renumerar referências. Somente inserções sem código recebem um novo valor; edições não alteram o código. A migração 004 aplica identity também a categoria, produto e orçamento. Itens usam a chave composta `(user_id, orcamento_codigo, produto_codigo)`. Nenhum cadastro novo usa geração de código no navegador. A revisão evita sobrescrita concorrente.
+- No banco, produto referencia categoria por `categoria_codigo`; orçamento referencia cliente por `cliente_codigo`. Os arrays da interface recebem os nomes por joins. Itens preservam nome e preço históricos do produto e referenciam os códigos do orçamento e do produto.
+- CPF é salvo com máscara `000.000.000-00`; CNPJ usa `00.000.000/0000-00` e maiúsculas. Duplicidade ignora pontuação e caixa.
+- CNPJ usa ASCII menos 48 e módulo 11 conforme o [manual oficial](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/documentos-tecnicos/cnpj/manual-dv-cnpj.pdf).
+- Conteúdo textual em HTML é escapado; listas DOM usam `textContent`/`Option`. Ações de tabela usam `data-action` e um listener delegado, sem funções globais em `window`.
+- Português do Brasil, UTF-8 e imports relativos com extensão `.js`.
 
-1. O navegador carrega `menu.js` como módulo ES; suas importações são resolvidas por HTTP, a data local preenche o cabeçalho e o ponto de entrada chama `render()` na página `clientes`.
-2. Um clique no menu altera o estado de navegação. Clientes, Produtos e Orçamentos expõem submenus padronizados como “Listar” e “Novo”; Produtos também expõe Categorias e Orçamentos expõe a listagem de Itens do orçamento. Editar e excluir são acionados diretamente nas linhas das entidades editáveis.
-3. `render()` seleciona a configuração em `pages`, aplica o texto correspondente à operação, combina a pesquisa textual com os filtros contextuais, preserva o índice original de cada registro e exibe a fatia de até 10 linhas correspondente à página atual.
-4. Inclusão ou edição comum abre o modal gerado a partir de `page.fields`; o novo orçamento usa as etapas específicas de cliente e itens. Ao fechar um cadastro iniciado por um submenu “Novo”, a navegação retorna para a respectiva listagem.
-5. O submit valida se a categoria do produto corresponde a um registro disponível e solicita confirmação ao editar clientes ou categorias. Para produtos, gera a data de cadastro na inclusão e preserva essa data na edição. O novo orçamento exige validade e ao menos uma quantidade inteira positiva, calcula os totais e grava orçamento e itens juntos. Na edição de orçamentos, o fluxo específico posiciona a validade corretamente e preserva data e total; depois atualiza `data` e renderiza novamente.
-6. A exclusão remove uma posição do array após `confirm()`; ao excluir um orçamento, seus itens relacionados também são removidos da memória.
-7. Trocar de área, listagem, pesquisa ou filtro retorna à primeira página; uma inclusão direciona para a última página disponível para revelar o novo registro.
+- `atlas_parse_date()` converte datas da interface; datas de cadastro/emissão de novos registros são `current_date` do SQL e permanecem imutáveis na edição. Total do item é coluna calculada; total do orçamento é recalculado pela RPC e exige ao menos um item. O fluxo aceita um novo orçamento por chamada, associando os itens cujo código de orçamento é null ao código recém-gerado.
 
-No fluxo de novo orçamento, `menu.js` monta uma lista pesquisável diretamente de `data.clientes`. Selecionar um cliente habilita a confirmação, que troca o conteúdo do modal pela lista de produtos, suas descrições, valores unitários, campos de quantidade e validade. A lista pode ser pesquisada por nome ou descrição e filtrada por categoria; as quantidades ficam em estado temporário durante a filtragem e o campo remove caracteres que não sejam dígitos. `budget.js` aplica novamente a regra de números inteiros positivos, calcula o total e monta os registros; o submit grava ambos os arrays somente quando existe ao menos um item.
+## Testes e comandos
 
-Categorias, clientes e produtos selecionáveis recebem classes visuais de seleção. Nos produtos do orçamento, a classe acompanha a quantidade positiva e permanece coerente quando a lista é filtrada e reconstruída.
+`npm run check` valida sintaxe; `npm test` executa `tests/*.test.js`, incluindo `database.test.js` (histórico 001–004) e `shared.test.js` (sequência 005–008 e carga simples) com `@electric-sql/pglite`: aplica as oito migrações em PostgreSQL local e verifica backfill, CRUD, códigos, datas, cálculos, rollback, RLS, FKs, aprovação, ordem dos campos e reset dos dados. Apenas o contexto Auth é simulado. `npm run test:e2e` usa `@playwright/test` em `e2e/app.spec.js`; `playwright.config.js` inicia Python na porta 8765 e aceita `PLAYWRIGHT_CHANNEL` opcional, por exemplo `msedge`. Requer Node.js 22+, Python 3 e navegador instalado via Playwright ou canal configurado. Dependências de desenvolvimento estão em `package-lock.json`; não há dependência de runtime.
 
-## Convenções importantes
+A suíte de navegador cobre CRUD, relações, confirmação, senha, navegação móvel, filtros, orçamento/itens, recarga e falhas/conflitos, com respostas Supabase simuladas. `supabase/tests/authorization.sql` testa compartilhamento e permissões em transação revertida, com resultado remoto apresentado pelo usuário. `.gitignore` exclui dependências, relatórios, traces e arquivos `.env`.
 
-- Os identificadores de página (`clientes`, `categorias`, `itens`, `orcamentos`, `itensOrcamento`) precisam coincidir entre `data`, `pages` e os atributos HTML.
-- Todo código de registro é armazenado como número inteiro, sem sigla ou prefixo. Novos códigos usam `maior código + 1`, sem reutilizar lacunas deixadas por exclusões.
-- Os registros são arrays posicionais. A ordem dos valores deve permanecer alinhada com `headers` e `fields`; em produtos, a ordem é código, categoria, produto, descrição, valor de venda, data de cadastro e status. A data não integra `fields` porque é automática e imutável.
-- Em orçamentos, a ordem é código, cliente, código do cliente, data de emissão, validade e valor total numérico. `budget.js` concentra o mapeamento, a criação dos itens e os cálculos; valores monetários são formatados apenas na renderização.
-- Em itens de orçamento, a ordem é código do orçamento, código do produto, nome do produto, quantidade, valor unitário e valor total do item. Os dois primeiros valores referenciam registros existentes nas coleções `orcamentos` e `itens`. A página é somente para consulta e não renderiza ações de edição ou exclusão.
-- Na edição, o primeiro valor é tratado como código imutável; os campos começam na posição seguinte.
-- `menu.js` importa dependências por caminhos relativos com extensão `.js`.
-- Funções chamadas por atributos `onclick` gerados como string são expostas no objeto `window` pelo ponto de entrada.
-- Dados exibidos em HTML gerado são convertidos para texto escapado. As listas dinâmicas de clientes e produtos usam `textContent`; apenas estrutura controlada pela aplicação é atribuída com `innerHTML`.
-- Campos `combobox` oferecem pesquisa textual e restringem o valor às opções disponíveis. Campos `dropdown` não possuem pesquisa, armazenam a opção em um campo oculto e compartilham o mesmo padrão visual de lista e seleção. Os dois componentes emitem `change` ao escolher uma opção e podem ser usados tanto em formulários quanto em filtros.
-- A execução local exige um servidor HTTP; `file://` não é suportado devido às restrições dos módulos ES no navegador.
-- O projeto usa português do Brasil e arquivos UTF-8.
+## Evolução pendente
 
-## Evolução planejada
+Validação de DVs no servidor, recuperação de senha, renovação automática de sessão e pipeline CI continuam pendentes. As propostas estão em [PROJECT_REVIEW.md](PROJECT_REVIEW.md); defeitos confirmados ficam em [ISSUES.md](ISSUES.md).
 
-A fonte `docs/ideas.text` prevê persistência no Supabase. Ao implementar essa etapa, recomenda-se:
+## Organização dos controladores
 
-- substituir arrays posicionais por objetos nomeados;
-- substituir o módulo demonstrativo de dados por uma camada de acesso ao Supabase;
-- buscar clientes e categorias dinamicamente;
-- gerar identificadores no banco;
-- implementar autenticação/autorização para exclusões;
-- modelar orçamento e itens de orçamento em tabelas relacionadas;
-- validar regras tanto no cliente quanto no banco;
-- ampliar os testes para formulários, cálculos, validações, operações CRUD e interação no navegador.
+`app.js` conecta as fábricas de controladores por callbacks explícitos, sem imports circulares. `listing.js` controla listagens, navegação e filtros. `records.js` controla formulários CRUD, exclusão e submissão comum. `budget-flow.js` mantém cliente e quantidades selecionados em seu próprio escopo. `session.js` trata login, logout e restauração da sessão. O estado compartilhado fica em `data.js`; o transporte REST permanece em `backend.js`.
 
-Quando essa arquitetura mudar, este documento e o README devem ser atualizados junto com o código.
+As ações da tabela usam `data-action` e `data-index` com listener delegado no corpo da tabela. `html.js` fornece escape HTML compartilhado para `form.js` e `table.js`.
+
+Os cenários de navegador ficam em `e2e/app.spec.js`, com simulação do backend em `e2e/helpers/backend.js`. Navegador e testes SQL compartilham `tests/fixtures/workspace.js`, que não é importado pelos módulos de produção; `workspace-legacy.js` preserva o contrato anterior à 008. As migrações 001–004 permanecem como histórico, e 005–008 evoluem compartilhamento, permissões, aprovação e ordem do cliente.
+
+### Novo orçamento: seleção e revisão de itens
+
+A seleção inicial exibe somente o nome do cliente, mantendo o código como referência interna. A etapa de itens usa duas colunas: produtos e quantidades à esquerda, lista adicionada e total à direita. ADICIONAR ITENS transfere as quantidades para o rascunho e limpa a seleção; adicionar novamente o mesmo produto soma sua quantidade. Itens podem ser removidos da lista. SALVAR ORÇAMENTO exige validade e ao menos um item adicionado, e grava somente a lista da direita. Adicionar/remover itens não grava no Supabase; a gravação continua atômica ao salvar. No celular, as colunas ficam empilhadas. O estado do rascunho pertence a `budget-flow.js` e reinicia a cada novo orçamento.
+
+Editar orçamento abre o fluxo de duas colunas com os itens existentes. Permite trocar cliente, validade e adicionar/remover itens; adicionar novamente soma quantidades. Salvar pede confirmação e preserva código, data original e nomes/preços históricos dos itens existentes. Cancelar a confirmação mantém o rascunho sem gravar. Orçamento e itens são atualizados juntos pela RPC existente.
+
+O ícone da Atlas combina capacete de obra e letra A nas cores da marca. O SVG local `assets/icons/atlas.svg` é reutilizado no cabeçalho e como favicon da aba. No cabeçalho, a imagem usa texto alternativo vazio porque o nome da empresa já aparece ao lado.
+
+## Revisão de issues: orçamentos e sessão
+
+- Enter em um campo de quantidade adiciona os itens ao rascunho, sem submeter o orçamento. A gravação continua pelo botão Salvar.
+- Na edição, o catálogo exibe o mesmo preço histórico usado para os produtos já presentes no orçamento; novos produtos usam o preço atual.
+- Sair oculta a aplicação, esvazia dados e limpa tabela/formulário imediatamente. O login fica desabilitado enquanto o logout remoto termina (ou falha), evitando concorrência entre logout e uma nova sessão. O token local é removido mesmo quando a revogação remota falha.
+
+Na migração 005, a revisão compartilhada é calculada em uma variável PL/pgSQL no mesmo bloco DO que substitui os metadados dos workspaces. Não há dependência de tabela temporária; a revisão resultante é o maior valor anterior mais um.
+
+## Atualização de permissões — migração 006
+
+`supabase/migrations/202609060006_budget_permissions.sql` permite a todos os autenticados não anônimos editar/excluir orçamentos e remover itens do orçamento. Exclusão de clientes, categorias e produtos continua exclusiva de administradores. A exclusão de orçamento mantém confirmação e senha na interface; a remoção de itens é gravada ao salvar. Um orçamento mantido exige ao menos um item. O SQL aplica as permissões mesmo em chamadas diretas; revisão global, transação e bloqueios de vínculo continuam ativos. Aplique somente a 006 se a 005 já estiver instalada, depois recarregue a aplicação.
+
+## Impressão e PDF de orçamento
+
+Implementado: o botão Imprimir em cada orçamento salvo abre uma prévia em nova janela para todos os usuários autenticados. O documento contém Atlas Máquinas & Obras, cliente e CPF/CNPJ atual, código, emissão, validade, itens históricos, quantidades, preços, subtotais e total. Imprimir / Salvar PDF abre o diálogo nativo; selecione Salvar como PDF para exportar. Os controles não aparecem no documento impresso. Cabeçalhos/rodapés automáticos são configurados no navegador.
+
+`assets/js/budget-print.js` gera o documento com escape de texto e filtra itens pelo código do orçamento; `records.js` trata a ação delegada de `table.js`. Estilos de impressão são locais ao documento, com formato A4 e cabeçalho de tabela repetido em múltiplas páginas. Não há serviço externo, biblioteca nova, gravação no banco ou download automático. Pop-ups bloqueados geram orientação. Testes em `tests/budget-print.test.js` e `e2e/app.spec.js` verificam escape, separação de itens, conteúdo e controles ocultos em mídia de impressão.
+
+## Aprovação de orçamentos
+
+Implementado no código: no menu de Orçamentos, Listar orçamentos aparece antes de Orçamentos aprovados. O submenu Orçamentos aprovados lista apenas aprovados, com pesquisa e paginação. O botão Aprovar orçamento fica no cabeçalho, depois de Novo orçamento, com 14 px de espaço entre os botões; abre a seleção de um orçamento pendente e pede confirmação. Não há botão de aprovação nas linhas. Todos os autenticados não anônimos podem aprovar. Não há estados Enviado/Cancelado, reversão de aprovação nem bloqueio de edição: editar um aprovado mantém sua aprovação, conforme o escopo limitado desta entrega.
+
+Aplique somente `supabase/migrations/202609060007_budget_approval.sql` após 006 e recarregue as abas. A coluna `orcamento.aprovado` começa falsa para registros existentes/novos. `atlas_approve_budget(expected_revision,budget_code)` usa a revisão global e grava atomicamente; repetição, orçamento inexistente e acesso anônimo são rejeitados. `atlas_load_workspace()` retorna `approved_codes` além do contrato anterior, mantendo os arrays de orçamento com seis campos. `backend.js` mantém `approvedBudgets` separado do payload; a interface só atualiza a aprovação após confirmação do servidor. Não há dependência nova.
+
+No submenu Orçamentos aprovados, a única ação por linha é Baixar PDF, que abre a prévia e permite Salvar como PDF pelo diálogo nativo do navegador. Não há ações de edição, exclusão ou aprovação nessa listagem; a listagem normal mantém as ações existentes. Pesquisa e paginação preservam o vínculo com o orçamento original. Esta alteração de interface não exige nova migração SQL.
+
+A aprovação é iniciada exclusivamente pelo botão do cabeçalho Aprovar orçamento. `records.js` monta a janela com elementos DOM e `textContent`, permite pesquisa por cliente ou código e apresenta código, cliente, data de criação e validade. A opção selecionada recebe o mesmo destaque usado na seleção de cliente do novo orçamento. Enter no campo de pesquisa não submete o formulário. Sem pendentes, o botão fica desabilitado. O submenu Orçamentos aprovados mantém apenas a ação PDF por linha. Não é necessária nova migração para essa mudança de interface.
+
+`config.js` e `listing.js` exibem Código do cliente antes de Cliente nas listagens geral e de aprovados. O contrato posicional atual de `orcamentos` é `[codigo, clienteCodigo, clienteNome, data, validade, total]`. A migração 008 adapta `atlas_load_workspace()` e `atlas_save_workspace()` a essa ordem; a tabela `orcamento` já guarda `cliente_codigo`, e o nome continua derivado por `JOIN` com `cliente`. A revisão global é incrementada para impedir gravações de snapshots abertos com o contrato anterior.

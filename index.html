@@ -7,36 +7,46 @@
   <title> Atlas Máquinas & Obras | Gestão Comercial</title>
   
   <!-- Estilos mantidos separadamente para facilitar a manutenção. -->
-  <link rel="stylesheet" href="assets/css/menu.css">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/atlas.svg">
 
 </head>
 
 <body>
   <!-- Cabeçalho do sistema, inspirado na faixa escura da referência. -->
   <header class="topbar">
-    <div class="brand"><i></i> Atlas Máquinas & Obras</div>
+    <div class="brand"><img class="brand-icon" src="assets/icons/atlas.svg" alt="" width="40" height="40"> Atlas Máquinas & Obras</div>
 
     <span>Gestão comercial • <time id="current-date"></time></span><b>GC</b>
 
   </header>
 
-  <main>
+  <section id="auth-panel" class="auth-panel">
+    <h1>Entrar no sistema</h1>
+    <form id="auth-form">
+      <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
+      <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit">ENTRAR</button>
+    </form>
+    <p id="auth-error" role="alert"></p>
+  </section>
+  <main class="hidden" id="application">
     
     <!-- Atalhos visuais da esquerda. -->
-    <nav class="icons">
+    <nav class="icons" aria-label="Atalhos do sistema">
 
-      <button>☰</button>
+      <button type="button" id="menu-toggle" aria-controls="main-menu" aria-expanded="false" aria-label="Abrir menu" title="Abrir menu"><span aria-hidden="true">☰</span></button>
 
-      <button>▣</button>
+      <button type="button" disabled aria-label="Painel (indisponível)" title="Painel (indisponível)"><span aria-hidden="true">▣</span></button>
 
-      <button>▤</button>
+      <button type="button" disabled aria-label="Relatórios (indisponível)" title="Relatórios (indisponível)"><span aria-hidden="true">▤</span></button>
 
-      <button>⚙</button>
+      <button type="button" disabled aria-label="Configurações (indisponível)" title="Configurações (indisponível)"><span aria-hidden="true">⚙</span></button>
 
     </nav>
     
     <!-- Opções baseadas nos requisitos documentados em docs/ideas.text. -->
-    <aside><h2>MENU PRINCIPAL</h2>
+    <aside id="main-menu"><h2>MENU PRINCIPAL</h2>
 
       <button class="active" data-page="clientes" data-menu="clientes">Clientes</button>
 
@@ -56,6 +66,8 @@
 
         <button class="sub" data-budget-action="listar" data-menu="orcamentos">Listar orçamentos</button>
 
+        <button class="sub" data-budget-action="aprovados" data-menu="orcamentos">Orçamentos aprovados</button>
+
         <button class="sub" data-page="itensOrcamento" data-menu="orcamentos">Itens do orçamento</button>
       
         <button class="sub" data-new="orcamentos" data-menu="orcamentos">Novo orçamento</button>
@@ -74,7 +86,10 @@
           <p id="description">Consulte e gerencie os clientes cadastrados no sistema.</p>
         </div>
         
-        <button class="primary" id="new">+ INCLUIR CLIENTE</button>
+        <div class="heading-actions">
+          <button class="primary" id="new">+ INCLUIR CLIENTE</button>
+          <button type="button" class="primary hidden" id="approve-budget">APROVAR ORÇAMENTO</button>
+        </div>
       </div>
       
       <div class="filters">
@@ -143,11 +158,36 @@
   </main>
 
   <!-- Janela reutilizada para os formulários de incluir e editar. -->
-  <div class="overlay hidden" id="overlay"><section class="modal"><header><h2 id="modal-title">Novo registro</h2><button id="close">×</button></header><form id="form"></form></section></div>
+  <div class="overlay hidden" id="overlay"><section class="modal"><header><h2 id="modal-title">Novo registro</h2><button type="button" id="close" aria-label="Fechar formulário" title="Fechar formulário"><span aria-hidden="true">×</span></button></header><form id="form"></form></section></div>
+  <dialog id="delete-password" aria-labelledby="delete-title">
+    <h2 id="delete-title">Autorizar exclusão</h2>
+    <form method="dialog">
+      <label>Confirme sua senha<input type="password" name="password" autocomplete="current-password" required></label>
+      <button value="cancel" formnovalidate class="secondary">Cancelar</button>
+      <button value="confirm" class="primary">EXCLUIR</button>
+    </form>
+  </dialog>
   
   <!-- JavaScript separado: dados demonstrativos e interações. -->
-  <script type="module" src="assets/js/menu.js"></script>
+  <script type="module" src="assets/js/app.js"></script>
 
+  <dialog id="approval-dialog" aria-labelledby="approval-title">
+    <header>
+      <h2 id="approval-title">Aprovar orçamento</h2>
+      <button type="button" id="close-approval" aria-label="Fechar aprovação" title="Fechar aprovação"><span aria-hidden="true">×</span></button>
+    </header>
+    <form method="dialog">
+      <label class="modal-search">Pesquisar orçamento
+        <input id="approval-search" type="search" placeholder="Cliente ou código do orçamento" autocomplete="off">
+      </label>
+      <div class="client-options" id="approval-options" role="radiogroup" aria-label="Orçamentos pendentes"></div>
+      <p class="form-error hidden" id="approval-error" role="alert">Selecione um orçamento para aprovar.</p>
+      <div class="footer">
+        <button class="secondary" value="cancel" formnovalidate>Cancelar</button>
+        <button class="primary" id="confirm-approval" value="approve" disabled>APROVAR</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 
 </html>

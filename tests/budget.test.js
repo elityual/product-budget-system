@@ -50,8 +50,8 @@ test('cria orçamento com todas as colunas esperadas', () => {
 
   assert.deepEqual(record, [
     2,
-    'Mariana Oliveira',
     2,
+    'Mariana Oliveira',
     '04/09/2026',
     '15/10/2026',
     718
@@ -61,8 +61,8 @@ test('cria orçamento com todas as colunas esperadas', () => {
 test('preserva data e total ao editar um orçamento', () => {
   const existingRecord = [
     102,
-    'Construtora Horizonte',
     1,
+    'Construtora Horizonte',
     '01/09/2026',
     '30/09/2026',
     12480
@@ -78,8 +78,8 @@ test('preserva data e total ao editar um orçamento', () => {
 
   assert.deepEqual(record, [
     102,
-    'Mariana Oliveira',
     2,
+    'Mariana Oliveira',
     '01/09/2026',
     '30/11/2026',
     12480

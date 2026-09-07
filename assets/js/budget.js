@@ -47,8 +47,8 @@ export function createBudgetRecord({
 }) {
   return [
     code,
-    client,
     clientCode,
+    client,
     existingRecord?.[3] ?? formatCurrentDate(currentDate),
     formatDateForDisplay(validity),
     total ?? existingRecord?.[5] ?? 0
