@@ -45,6 +45,12 @@ RLS permite leitura apenas a sessões autenticadas não anônimas. Escritas dire
 
 ## Problemas comuns
 
+### Gravação bloqueada por DELETE ou UPDATE sem WHERE
+
+Se o cadastro retornar `21000: DELETE requires a WHERE clause`, execute **somente** o arquivo inteiro [`202609080002_safe_workspace_writes.sql`](../supabase/migrations/202609080002_safe_workspace_writes.sql) no SQL Editor do projeto já instalado. Ele substitui `atlas_save_workspace` e `atlas_approve_budget` em uma transação, preservando tabelas, dados e permissões. Não execute novamente a migração inicial sobre o banco existente e não desative a proteção de gravação.
+
+A migração inicial já contém a correção para projetos novos. Depois de aplicar a correção em um projeto existente, recarregue o Atlas e cadastre um cliente; confira também os itens, totais e aprovação de um orçamento existente. A confirmação remota permanece pendente até essa verificação. O PGlite testa as transações e a preservação de dados, mas não reproduz a extensão de proteção do projeto Supabase.
+
 - “Configure a URL e a chave”: selecione Supabase e preencha ambos os campos; use Project URL e Publishable key, sem barras extras na URL.
 - “Sessão expirada”: entre novamente. A versão atual não renova tokens automaticamente.
 - “Permission denied”: confira se o SQL inicial foi executado inteiro e se o usuário está confirmado no Auth.

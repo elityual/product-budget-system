@@ -125,6 +125,8 @@ O objeto `data` contém arrays posicionais e é carregado pelo armazenamento sel
 
 ## Documentação
 
+Para corrigir `DELETE requires a WHERE clause` em um Supabase já instalado, execute somente `supabase/migrations/202609080002_safe_workspace_writes.sql` no SQL Editor. A correção preserva dados e permissões e mantém a proteção de gravação ativa. A instalação inicial já está corrigida; consulte [as instruções do Supabase](docs/SUPABASE.md) para validar o cadastro após aplicar a atualização.
+
 Mantenha README, [arquitetura](docs/ARCHITECTURE.md) e [requisitos](docs/REQUIREMENTS.md) sincronizados conforme `AGENTS.md`. Consulte também [issues](docs/ISSUES.md), [planejamento](docs/ROADMAP.md) e [Supabase](docs/SUPABASE.md).
 
 Para contribuir, leia [CONTRIBUTING.md](CONTRIBUTING.md). A automação em `.github/workflows/ci.yml` executa sintaxe, testes, instalação Supabase limpa e testes de navegador em cada alteração.

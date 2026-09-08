@@ -48,6 +48,8 @@ O SQLite mantém valores monetários como centavos inteiros. O servidor recebe a
 
 ## Persistência e autorização
 
+As RPCs de gravação e aprovação atualizam a revisão com `WHERE revision=expected_revision`, após o bloqueio existente. A substituição transacional dos itens usa `WHERE orcamento_codigo IS NOT NULL` (coluna da chave primária), mantendo a abrangência anterior com condição explícita. A migração `202609080002_safe_workspace_writes.sql` usa `CREATE OR REPLACE FUNCTION` para atualizar instalações existentes sem recriar tabelas nem alterar ACLs. Os testes verificam dados, permissões, aplicação repetida, rollback e presença de WHERE; a proteção específica do Supabase exige confirmação remota.
+
 `supabase/migrations/202609080001_initial.sql` cria uma instalação vazia com tabelas relacionais, RLS, permissões e RPCs. Códigos são gerados pelo banco, vínculos usam chaves estrangeiras e totais são calculados no servidor. Escritas retornam `{ revision, payload, approved_codes }`; conflito de revisão retorna `null`.
 
 No Supabase, usuários autenticados não anônimos leem e alteram o workspace compartilhado. Exclusões de clientes, categorias e produtos exigem administrador; orçamentos podem ser alterados pelos autenticados. No SQLite, o usuário do computador possui essas permissões. A confirmação por senha para exclusão é uma camada da interface do modo Supabase; a autoridade permanece no banco.

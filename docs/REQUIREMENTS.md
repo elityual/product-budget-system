@@ -133,6 +133,8 @@ O roteiro para validar uma instalação Supabase real está em [SUPABASE.md](SUP
 
 ## Regras comuns da interface
 
+Correção implementada de ARM-003 para Supabase: gravação e aprovação usam condições explícitas em DELETE/UPDATE, mantendo substituição atômica dos itens e controle de revisão. A migração corretiva `202609080002_safe_workspace_writes.sql` preserva dados, aprovações e permissões em instalações existentes. Validado localmente com PGlite e inspeção dos comandos; aceitação no projeto remoto com proteção de gravação permanece pendente.
+
 | ID | Requisito | Regra verificável | Estado |
 | --- | --- | --- | --- |
 | UI-001 | Pesquisa e filtros | Listagens usam pesquisa textual e filtros contextuais; mudar um filtro retorna à primeira página quando necessário. | Implementado |

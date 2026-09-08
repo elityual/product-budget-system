@@ -27,7 +27,66 @@ test('migração inicial cria um Supabase vazio e aceita o contrato atual', asyn
     assert.deepEqual(result.approved_codes, [1]);
     assert.equal(result.revision, 2);
     assert.equal((await db.query('select public.atlas_save_workspace(1,$1::jsonb) as result', [JSON.stringify(payload)])).rows[0].result, null);
+    // Aplicação corretiva sobre banco populado preserva dados e ACLs das funções.
+    const beforeUpgrade = (await db.query('select * from public.atlas_load_workspace()')).rows[0];
+    await db.exec('reset role');
+    const aclQuery = "select proname,proacl::text from pg_proc where pronamespace='public'::regnamespace and proname in ('atlas_save_workspace','atlas_approve_budget') order by proname";
+    const beforeAcl = (await db.query(aclQuery)).rows;
+    const correction = await readFile(new URL('../../supabase/migrations/202609080002_safe_workspace_writes.sql', import.meta.url), 'utf8');
+    await db.exec(correction);
+    await db.exec(correction);
+    assert.deepEqual((await db.query(aclQuery)).rows, beforeAcl);
+    await db.exec('set role authenticated');
+    assert.deepEqual((await db.query('select * from public.atlas_load_workspace()')).rows[0], beforeUpgrade);
+    const save = async (revision, value) => (await db.query('select public.atlas_save_workspace($1,$2::jsonb) as result', [revision, JSON.stringify(value)])).rows[0].result;
+    const withClient = structuredClone(beforeUpgrade.payload);
+    withClient.clientes.push([null, 'Pessoa Física', '529.982.247-25', 'Cliente novo']);
+    result = await save(2, withClient);
+    assert.deepEqual(result.payload.itensOrcamento, beforeUpgrade.payload.itensOrcamento);
+    assert.deepEqual(result.payload.orcamentos, beforeUpgrade.payload.orcamentos);
+    assert.deepEqual(result.approved_codes, [1]);
+    result.payload.clientes[1][3] = 'Cliente editado';
+    result = await save(3, result.payload);
+    assert.equal(result.payload.clientes[1][3], 'Cliente editado');
+    const beforeFailure = (await db.query('select * from public.atlas_load_workspace()')).rows[0];
+    const invalid = structuredClone(result.payload);
+    invalid.itensOrcamento[0][1] = 999999;
+    await assert.rejects(() => save(4, invalid));
+    assert.deepEqual((await db.query('select * from public.atlas_load_workspace()')).rows[0], beforeFailure);
+    const withoutBudget = structuredClone(result.payload);
+    withoutBudget.orcamentos = []; withoutBudget.itensOrcamento = [];
+    result = await save(4, withoutBudget);
+    assert.deepEqual(result.payload.orcamentos, []);
+    assert.deepEqual(result.payload.itensOrcamento, []);
+    assert.equal(result.payload.clientes.length, 2);
     await db.exec("reset role; set role anon; select set_config('request.jwt.claims','{}',false);");
     await assert.rejects(() => db.query('select * from public.atlas_load_workspace()'));
+  } finally { await db.close(); }
+});
+
+test('RPCs de gravação e aprovação usam WHERE em DELETE e UPDATE nas duas migrações', async () => {
+  for (const name of ['202609080001_initial.sql', '202609080002_safe_workspace_writes.sql']) {
+    const sql = await readFile(new URL(`../../supabase/migrations/${name}`, import.meta.url), 'utf8');
+    const statements = sql.match(/\b(?:delete\s+from|update\s+public\.)[^;]+;/gi) || [];
+    assert.ok(statements.length >= 8);
+    for (const statement of statements) assert.match(statement, /\bwhere\b/i, `${name}: ${statement}`);
+  }
+});
+
+test('cliente novo pode ser salvo sozinho em banco vazio', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated;
+      create schema auth; create table auth.users(id uuid primary key);
+      create function auth.uid() returns uuid language sql as $$ select '33333333-3333-4333-8333-333333333333'::uuid $$;
+      create function auth.jwt() returns jsonb language sql as $$ select '{}'::jsonb $$;
+      grant usage on schema auth to anon,authenticated;`);
+    await db.exec(await readFile(new URL('../../supabase/migrations/202609080001_initial.sql', import.meta.url), 'utf8'));
+    await db.exec('set role authenticated');
+    const payload = { clientes: [[null, 'Pessoa Física', '529.982.247-25', 'Primeiro cliente']], categorias: [], itens: [], orcamentos: [], itensOrcamento: [] };
+    const result = (await db.query('select public.atlas_save_workspace(0,$1::jsonb) as result', [JSON.stringify(payload)])).rows[0].result;
+    assert.equal(result.revision, 1);
+    assert.deepEqual(result.payload.clientes, [[1, 'Pessoa Física', '529.982.247-25', 'Primeiro cliente']]);
+    assert.deepEqual(result.payload.itensOrcamento, []);
   } finally { await db.close(); }
 });
