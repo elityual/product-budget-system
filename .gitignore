@@ -6,7 +6,9 @@ playwright-report/
 .env.*
 .local-data/
 .test-data/
+.test-backups/
 *.sqlite
 *.sqlite-*
 backups/
 release/
+AtlasLauncher.exe

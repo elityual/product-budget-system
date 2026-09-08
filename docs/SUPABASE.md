@@ -35,7 +35,7 @@ Depois de confirmar que o projeto está vazio, o operador pode executar [`supaba
 - Confirme que o administrador vê exclusões de catálogo e que uma conta comum não vê essas ações, mas pode editar orçamentos.
 - Altere dados em duas abas e salve a aba antiga; a gravação deve ser rejeitada por conflito e os dados não devem ser sobrescritos.
 
-Os testes locais em `tests/initial-supabase.test.js` simulam Auth e PostgreSQL com PGlite. Eles comprovam o SQL em um ambiente isolado; não comprovam a configuração do seu projeto remoto. Registre resultados remotos sem incluir tokens, senhas ou identificadores pessoais.
+Os testes locais em `tests/integration/initial-supabase.test.js` simulam Auth e PostgreSQL com PGlite. Eles comprovam o SQL em um ambiente isolado; não comprovam a configuração do seu projeto remoto. Registre resultados remotos sem incluir tokens, senhas ou identificadores pessoais.
 
 ## Permissões e dados
 

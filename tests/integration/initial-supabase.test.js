@@ -12,7 +12,7 @@ test('migração inicial cria um Supabase vazio e aceita o contrato atual', asyn
       create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
       grant usage on schema auth to anon,authenticated;
       insert into auth.users values ('33333333-3333-4333-8333-333333333333','admin@example.invalid');`);
-    await db.exec(await readFile(new URL('../supabase/migrations/202609080001_initial.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../../supabase/migrations/202609080001_initial.sql', import.meta.url), 'utf8'));
     await db.exec("set role authenticated; select set_config('request.jwt.claims','{\"sub\":\"33333333-3333-4333-8333-333333333333\"}',false);");
     let result = (await db.query('select * from public.atlas_load_workspace()')).rows[0];
     assert.deepEqual(result.payload, { clientes: [], categorias: [], itens: [], orcamentos: [], itensOrcamento: [] });

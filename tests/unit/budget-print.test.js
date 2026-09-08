@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBudgetDocument } from '../assets/js/budget-print.js';
-import { data } from './fixtures/workspace.js';
+import { createBudgetDocument } from '../../assets/js/budget-print.js';
+import { data } from '../fixtures/workspace.js';
 
 test('print escapes user text and isolates items by budget code', () => {
   const client = [...data.clientes[0]];
@@ -14,4 +14,6 @@ test('print escapes user text and isolates items by budget code', () => {
   assert.ok(html.includes('&lt;img'));
   assert.ok(!html.includes('<script>'));
   assert.ok(!html.includes('Other budget secret'));
+  assert.ok(html.includes('id="print-budget"'));
+  assert.ok(!html.includes('onclick='));
 });

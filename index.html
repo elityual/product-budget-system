@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title> Atlas Máquinas & Obras | Gestão Comercial</title>
+  <title>Atlas | Banco de dados</title>
   
   <!-- Estilos mantidos separadamente para facilitar a manutenção. -->
   <link rel="stylesheet" href="assets/css/app.css">
@@ -15,29 +15,55 @@
 <body>
   <!-- Cabeçalho do sistema, inspirado na faixa escura da referência. -->
   <header class="topbar">
-    <div class="brand"><img class="brand-icon" src="assets/icons/atlas.svg" alt="" width="40" height="40"> <span id="brand-name">Atlas Máquinas & Obras</span></div>
+    <div class="brand"><img class="brand-icon" src="assets/icons/atlas.svg" alt="" width="40" height="40"> <span id="brand-name">Atlas</span></div>
 
-    <span>Gestão comercial • <time id="current-date"></time></span>
+    <div class="topbar-status" title="Empresa e data atual"><span id="header-company-name">Atlas Máquinas & Obras</span> • <time id="current-date"></time></div>
+    <div class="topbar-actions">
     <div id="storage-actions" class="hidden">
-      <button type="button" id="download-backup" title="Baixar backup">Backup</button>
+      <button type="button" id="download-backup" title="Salvar backup e abrir a pasta">Backup</button>
       <button type="button" id="restore-backup" title="Restaurar backup">Restaurar</button>
       <input id="restore-file" type="file" accept="application/json" hidden>
     </div>
-    <b>GC</b>
+    <b>BD</b>
+    </div>
 
   </header>
 
   <section id="auth-panel" class="auth-panel">
     <h1>Iniciar o sistema</h1>
-    <label>Armazenamento
-      <select id="storage-mode">
-        <option value="supabase">Supabase (nuvem)</option>
-        <option value="local">Banco local neste computador</option>
-      </select>
-    </label>
+    <label for="storage-mode-toggle">Armazenamento</label>
+    <div class="dropdown" data-dropdown id="storage-mode-dropdown">
+        <input class="dropdown-value" id="storage-mode" name="storage-mode" type="hidden" value="supabase">
+        <button class="dropdown-toggle" id="storage-mode-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="storage-mode-options">
+          <span data-dropdown-label>Supabase (nuvem)</span><span class="dropdown-icon" aria-hidden="true">▾</span>
+        </button>
+        <div class="dropdown-options hidden" id="storage-mode-options" role="listbox">
+          <button type="button" role="option" aria-selected="true" data-dropdown-option="supabase">Supabase (nuvem)</button>
+          <button type="button" role="option" aria-selected="false" data-dropdown-option="local">Banco local neste computador</button>
+        </div>
+    </div>
     <div id="supabase-settings">
       <label>URL do projeto Supabase<input id="supabase-url" type="url" placeholder="https://seu-projeto.supabase.co" autocomplete="url"></label>
       <label>Chave publishable<input id="supabase-key" type="password" placeholder="sb_publishable_..." autocomplete="off"></label>
+    </div>
+    <div id="local-backup-settings" class="hidden">
+      <p>Pasta dos backups automáticos</p>
+      <div class="backup-controls"><button id="choose-backup-directory" type="button">Escolher pasta</button><button id="save-backup-settings" type="button">Salvar backups</button></div>
+      <p id="backup-directory" class="backup-directory">Nenhuma pasta selecionada.</p>
+      <label for="backup-interval-toggle">Intervalo</label>
+      <div class="dropdown" data-dropdown id="backup-interval-dropdown">
+        <input class="dropdown-value" id="backup-interval" type="hidden" value="15">
+        <button class="dropdown-toggle" id="backup-interval-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="backup-interval-options">
+          <span data-dropdown-label>A cada 15 minutos</span><span class="dropdown-icon" aria-hidden="true">▾</span>
+        </button>
+        <div class="dropdown-options hidden" id="backup-interval-options" role="listbox">
+          <button type="button" role="option" aria-selected="false" data-dropdown-option="5">A cada 5 minutos</button>
+          <button type="button" role="option" aria-selected="true" data-dropdown-option="15">A cada 15 minutos</button>
+          <button type="button" role="option" aria-selected="false" data-dropdown-option="30">A cada 30 minutos</button>
+          <button type="button" role="option" aria-selected="false" data-dropdown-option="60">A cada 60 minutos</button>
+        </div>
+      </div>
+      <p id="backup-status" aria-live="polite"></p>
     </div>
     <label id="company-setting">Nome da empresa<input id="company-name" type="text" value="Atlas Máquinas & Obras" maxlength="160" autocomplete="organization"></label>
     <form id="auth-form">
@@ -59,11 +85,11 @@
 
       <button type="button" disabled aria-label="Relatórios (indisponível)" title="Relatórios (indisponível)"><span aria-hidden="true">▤</span></button>
 
-      <button type="button" disabled aria-label="Configurações (indisponível)" title="Configurações (indisponível)"><span aria-hidden="true">⚙</span></button>
+      <button type="button" id="settings-button" aria-label="Configurações" title="Configurações"><span aria-hidden="true">⚙</span></button>
 
     </nav>
     
-    <!-- Opções baseadas nos requisitos documentados em docs/ideas.text. -->
+    <!-- Opções baseadas nos requisitos consolidados em docs/REQUIREMENTS.md. -->
     <aside id="main-menu"><h2>MENU PRINCIPAL</h2>
 
       <button class="active" data-page="clientes" data-menu="clientes">Clientes</button>
@@ -205,6 +231,24 @@
         <button class="primary" id="confirm-approval" value="approve" disabled>APROVAR</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <header><h2 id="settings-title">Configurações</h2><button type="button" id="close-settings" aria-label="Fechar configurações" title="Fechar"><span aria-hidden="true">×</span></button></header>
+    <section id="settings-local" class="hidden">
+      <p>Pasta dos backups automáticos</p>
+      <button id="settings-choose-directory" type="button">Alterar pasta</button>
+      <p id="settings-directory" class="backup-directory">Nenhuma pasta selecionada.</p>
+      <label for="settings-interval-toggle">Intervalo</label>
+      <div class="dropdown" data-dropdown id="settings-interval-dropdown">
+        <input class="dropdown-value" id="settings-interval" type="hidden" value="15">
+        <button class="dropdown-toggle" id="settings-interval-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="settings-interval-options"><span data-dropdown-label>A cada 15 minutos</span><span class="dropdown-icon" aria-hidden="true">▾</span></button>
+        <div class="dropdown-options hidden" id="settings-interval-options" role="listbox"><button type="button" role="option" data-dropdown-option="5">A cada 5 minutos</button><button type="button" role="option" data-dropdown-option="15">A cada 15 minutos</button><button type="button" role="option" data-dropdown-option="30">A cada 30 minutos</button><button type="button" role="option" data-dropdown-option="60">A cada 60 minutos</button></div>
+      </div>
+      <p id="settings-backup-status" aria-live="polite"></p>
+    </section>
+    <p id="settings-supabase" class="hidden">As configurações de backup estão disponíveis somente no banco local.</p>
+    <p id="settings-error" role="alert"></p>
+    <footer><button type="button" class="secondary" id="settings-cancel">Cancelar</button><button type="button" class="primary" id="settings-save">Salvar alterações</button></footer>
   </dialog>
 </body>
 

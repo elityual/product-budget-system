@@ -1,8 +1,8 @@
 # Product and Budget Control System
 
-> Última revisão técnica: 7 de setembro de 2026.
+> Última revisão técnica: 8 de setembro de 2026.
 
-Sistema de gestão comercial para a **Atlas Máquinas & Obras**, com clientes, categorias, produtos, orçamentos e itens de orçamento.
+Aplicação Atlas de banco de dados para gestão comercial da **Atlas Máquinas & Obras**, com clientes, categorias, produtos, orçamentos e itens de orçamento.
 
 **Estado atual:** primeira versão pública em preparação, com dois armazenamentos selecionáveis: SQLite local para uso sem internet e Supabase configurado pelo operador. Não há configuração fixa de projeto nem suporte a instalações anteriores. Para começar do zero, consulte [configuração do Supabase](docs/SUPABASE.md).
 
@@ -15,9 +15,23 @@ A aplicação usa módulos ES e um servidor Node.js 24, sem framework ou depend�
 3. Inicie o servidor: `npm start`.
 4. Abra `http://127.0.0.1:8765/` e escolha SQLite local ou Supabase.
 
+Depois de mudar arquivos em `index.html`, `assets/css/` ou `assets/js/`, use `Ctrl+F5` no navegador para carregar os arquivos novos. Reinicie `npm start` apenas depois de alterar `server.js`, arquivos em `server/` ou as variáveis de ambiente do servidor.
+
+Como alternativa no Windows, execute `npm run build:launcher` uma vez para gerar `AtlasLauncher.exe` na pasta do projeto. Depois, dê duplo clique no EXE: ele inicia o mesmo `server.js`, abre o navegador quando `http://127.0.0.1:8765/` responder e mantém uma pequena janela com os botões **Abrir navegador** e **Parar servidor**. Node.js 24 ou superior ainda precisa estar instalado; o launcher não substitui o comando `npm start` e não inclui um Node.js próprio. Fechar a janela ou usar **Parar servidor** solicita o encerramento limpo do processo iniciado pelo launcher. Se a porta estiver ocupada, o launcher não encerra o processo existente.
+
+O launcher deve ficar na raiz do projeto, ao lado de `server.js` e `package.json`. Ele herda `PORT` e `ATLAS_DATA_DIR` do ambiente. Se já houver outro launcher para a mesma pasta, a janela existente é trazida para frente. Mensagens de erro indicam quando Node.js não foi encontrado, quando os arquivos necessários faltam ou quando o servidor não responde.
+
 No SQLite local o banco é criado vazio em `%LOCALAPPDATA%\ProductBudgetControl` (ou em `.local-data/ProductBudgetControl` quando `LOCALAPPDATA` não está disponível). No Supabase, crie seu próprio projeto e execute [a instalação inicial](supabase/migrations/202609080001_initial.sql); a aplicação pede a URL e a chave publishable na tela.
 
+Ao escolher SQLite local, selecione uma pasta para os backups automáticos. A escolha fica salva neste computador e o Atlas cria uma cópia ao aplicar a configuração, novas cópias no intervalo escolhido (15 minutos por padrão) e uma cópia no encerramento normal do servidor quando a revisão dos dados mudou desde o último backup automático. A pasta escolhida recebe a subpasta `Atlas Backups`, que mantém as 30 cópias automáticas mais recentes. A falta de energia ou o encerramento forçado podem impedir a cópia final. Fechar apenas o navegador não encerra o servidor.
+
+Ao selecionar SQLite local na tela inicial, use **Escolher pasta** para abrir o diálogo do Windows e então **Salvar backups**. O caminho escolhido é exibido abaixo dos botões. Você pode alterar a pasta ou o intervalo de 5, 15, 30 ou 60 minutos antes de abrir o banco. Depois de entrar, **Backup** cria uma cópia manual e abre `Atlas Backups` no Explorador do Windows; as cópias manuais não entram no limite das 30 cópias automáticas.
+
+O intervalo usa o mesmo dropdown da escolha de armazenamento e passa a valer ao salvar os backups: o servidor cancela a programação anterior e inicia uma única nova contagem. Os botões Backup e Restaurar ficam disponíveis somente após abrir SQLite local. A engrenagem abre **Configurações**: no banco local ela permite alterar a pasta e o intervalo, mostra o último backup automático ou erro; no Supabase explica que esses ajustes não se aplicam. Cancelar a janela descarta o rascunho.
+
 ## Validação e testes
+
+O launcher confirma a inicialização pelo processo Node que ele próprio iniciou. Se a porta estiver ocupada, informa o conflito sem abrir o navegador nem assumir o servidor existente. Ao fechar o launcher, aguarda o encerramento e os backups; se o launcher terminar inesperadamente, o fechamento do pipe solicita a parada do servidor. `ATLAS_LAUNCHER_ID` é uma variável interna desse protocolo; não precisa ser configurada pelo operador.
 
 Use Node.js 24 ou superior. Os testes unitários usam o executor nativo, os testes SQL usam `@electric-sql/pglite` e os testes de navegador usam `@playwright/test`.
 
@@ -37,13 +51,13 @@ $env:PLAYWRIGHT_CHANNEL = 'msedge'
 npm.cmd run test:e2e
 ```
 
-`PLAYWRIGHT_CHANNEL` é opcional e usado somente nos testes. `playwright.config.js` inicia `server.js` em `127.0.0.1:8765` com banco descartável `.test-data`. Os testes de navegador simulam as respostas Supabase, sem gravar no projeto real. Cobrem CRUD, vínculos, confirmação, filtros, menu móvel, orçamento, recarga e falhas/conflitos. Não substituem a validação das políticas SQL no projeto. Resultados e traces ficam em `test-results/`.
+`PLAYWRIGHT_CHANNEL` é opcional e usado somente nos testes. `playwright.config.js` inicia `server.js` em `127.0.0.1:8766` com banco de teste `.test-data`; `PLAYWRIGHT_PORT` permite escolher outra porta sem parar a aplicação em 8765. O servidor de testes recusa uma porta ocupada. Os testes usam SQLite e simulam as respostas Supabase, sem gravar no projeto remoto real. Cobrem CRUD, vínculos, confirmação, filtros, menu móvel, orçamento, impressão, recarga e falhas/conflitos. Não substituem a validação das políticas SQL no projeto. Resultados e traces ficam em `test-results/`.
 
 `npm run package:source` cria `release/product-budget-control-source.tar.gz` com os fontes permitidos para distribuição. O arquivo exclui dependências, bancos, backups, caches, credenciais e resultados de testes; a publicação é manual.
 
 ## Funcionalidades
 
-- Navegação entre Clientes, Produtos e Orçamentos. Orçamentos oferece Listar, Orçamentos aprovados, Itens do orçamento e Novo orçamento, nessa ordem. O cabeçalho usa a data local.
+- Navegação entre Clientes, Produtos e Orçamentos. Orçamentos oferece Listar, Orçamentos aprovados, Itens do orçamento e Novo orçamento, nessa ordem. O cabeçalho central mostra o nome configurado da empresa e a data local, preservando Atlas como marca fixa.
 - Menu móvel para telas de até 760 px, com botão, foco, Escape e fechamento ao navegar ou clicar fora.
 - Pesquisa compartilhada, filtros de tipo, categoria e status, tabelas de até 10 registros e paginação. Categoria aplica o filtro imediatamente.
 - Inclusão limpa filtros pelo botão principal e pelos submenus; cancelar mantém filtros limpos. Edição preserva filtros. Salvar inclusão revela o registro na última página.
@@ -66,7 +80,8 @@ npm.cmd run test:e2e
 - A senha de exclusão complementa o fluxo da interface; a RPC autoriza chamadas diretas pela identidade autenticada, sem exigir senha novamente.
 - Token armazenado em `sessionStorage`, sem renovação automática. Após expirar, saia e entre novamente. Não há cadastro, recuperação de senha ou papéis administrativos na interface.
 - Sem consulta de situação cadastral de CPF/CNPJ ou lint dedicado. A validação automatizada não equivale a uma auditoria completa de acessibilidade.
-- Os atalhos Painel, Relatórios e Configurações continuam desabilitados. O botão de menu é funcional no celular.
+- Os atalhos Painel e Relatórios continuam desabilitados. Configurações permite ajustar backups somente no SQLite local. O botão de menu é funcional no celular.
+- A seleção da pasta de backup e a abertura no Explorador dependem do Windows. A tela atual não permite digitar um caminho em outros sistemas.
 
 ## Estrutura
 
@@ -78,7 +93,9 @@ npm.cmd run test:e2e
 | `assets/js/budget-flow.js`, `assets/js/session.js` | Fluxo de orçamento e interface de login/logout |
 | `assets/js/html.js` | Escape HTML compartilhado |
 | `tests/fixtures/workspace.js`, `e2e/helpers/backend.js` | Dados de teste atuais e simulação do Supabase |
-| `assets/js/backend.js`, `server.js` | Interface de armazenamento, Auth, REST, SQLite local, sessão, revisão e backups |
+| `assets/js/backend.js`, `assets/js/storage/` | Fachada de armazenamento, sessão, Auth e transportes SQLite/Supabase |
+| `server.js`, `server/` | Inicialização, configuração, SQLite, validação, transações, backups e HTTP local |
+| `launcher/AtlasLauncher.cs`, `scripts/build-launcher.mjs` | Código-fonte e compilação opcional do launcher Windows |
 | `assets/js/relations.js` | Atualização de vínculos e bloqueio de exclusões em uso |
 | `assets/js/navigation.js` | Menu móvel e foco |
 | `assets/js/data.js` | Dados vazios da aplicação, estado de navegação e fábrica de coleções independentes |
@@ -86,11 +103,11 @@ npm.cmd run test:e2e
 | `assets/js/form.js` | Campos, comboboxes e dropdowns |
 | `assets/js/validation.js` | Documentos, preços, normalização e duplicidades |
 | `assets/js/budget.js`, `assets/js/table.js` | Orçamentos, cálculos, filtros e renderização |
-| `tests/*.test.js` | Testes unitários, SQLite local e instalação Supabase limpa |
+| `tests/unit/`, `tests/integration/`, `tests/fixtures/` | Testes unitários, integração SQLite/Supabase e dados de teste |
 | `e2e/app.spec.js`, `playwright.config.js` | Testes de navegador e servidor de teste |
 | `supabase/migrations/202609080001_initial.sql` | Instalação Supabase do zero: tabelas, RLS, permissões, aprovação e RPCs |
 | `supabase/seeds/example_data.sql` | Carga opcional de demonstração, protegida contra bancos já preenchidos |
-| `tests/initial-supabase.test.js` | Teste da instalação Supabase em banco vazio |
+| `tests/integration/initial-supabase.test.js` | Teste da instalação Supabase em banco vazio |
 | `package.json`, `package-lock.json`, `.gitignore` | Comandos, dependências fixadas e exclusões de artefatos |
 | `docs/` | Arquitetura, requisitos, issues, configuração e anotações originais |
 
@@ -108,7 +125,7 @@ O objeto `data` contém arrays posicionais e é carregado pelo armazenamento sel
 
 ## Documentação
 
-Mantenha README, [arquitetura](docs/ARCHITECTURE.md) e [requisitos](docs/REQUIREMENTS.md) sincronizados conforme `AGENTS.md`. Consulte também [issues](docs/ISSUES.md) e [Supabase](docs/SUPABASE.md).
+Mantenha README, [arquitetura](docs/ARCHITECTURE.md) e [requisitos](docs/REQUIREMENTS.md) sincronizados conforme `AGENTS.md`. Consulte também [issues](docs/ISSUES.md), [planejamento](docs/ROADMAP.md) e [Supabase](docs/SUPABASE.md).
 
 Para contribuir, leia [CONTRIBUTING.md](CONTRIBUTING.md). A automação em `.github/workflows/ci.yml` executa sintaxe, testes, instalação Supabase limpa e testes de navegador em cada alteração.
 
@@ -120,7 +137,7 @@ A seleção inicial do orçamento exibe somente o nome do cliente, mantendo o c�
 
 Editar orçamento abre o fluxo de duas colunas com os itens existentes. Permite trocar cliente, validade e adicionar/remover itens; adicionar novamente soma quantidades. Salvar pede confirmação e preserva código, data original e nomes/preços históricos dos itens existentes. Cancelar a confirmação mantém o rascunho sem gravar. Orçamento e itens são atualizados juntos pela RPC existente.
 
-O ícone da Atlas combina capacete de obra e letra A nas cores da marca. O SVG local `assets/icons/atlas.svg` é reutilizado no cabeçalho e como favicon da aba. No cabeçalho, a imagem usa texto alternativo vazio porque o nome da empresa já aparece ao lado.
+O ícone da Atlas representa um banco de dados nas cores da marca. O SVG local `assets/icons/atlas.svg` é reutilizado no cabeçalho e como favicon da aba. No cabeçalho, a imagem usa texto alternativo vazio porque a marca Atlas já aparece ao lado.
 
 ## Revisão de issues: orçamentos e sessão
 
@@ -128,11 +145,11 @@ O ícone da Atlas combina capacete de obra e letra A nas cores da marca. O SVG l
 - Na edição, o catálogo exibe o mesmo preço histórico usado para os produtos já presentes no orçamento; novos produtos usam o preço atual.
 - Sair oculta a aplicação, esvazia dados e limpa tabela/formulário imediatamente. O login fica desabilitado enquanto o logout remoto termina (ou falha), evitando concorrência entre logout e uma nova sessão. O token local é removido mesmo quando a revogação remota falha.
 
-## Avaliação e propostas
+## Planejamento de evolução
 
-Veja [a avaliação do projeto](docs/PROJECT_REVIEW.md) para pontos fortes, melhorias sugeridas, prioridades e critérios de conclusão. O documento identifica separadamente o que já foi concluído e o que continua como proposta.
+O trabalho futuro, suas dependências e seus critérios de conclusão estão em [docs/ROADMAP.md](docs/ROADMAP.md). Regras comerciais atuais ficam em [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) e defeitos confirmados em [docs/ISSUES.md](docs/ISSUES.md).
 
-A migração inicial `supabase/migrations/202609080001_initial.sql` cria diretamente o modelo final em um projeto Supabase vazio. `tests/initial-supabase.test.js` verifica o contrato; configure o primeiro administrador conforme [SUPABASE.md](docs/SUPABASE.md).
+A migração inicial `supabase/migrations/202609080001_initial.sql` cria diretamente o modelo final em um projeto Supabase vazio. `tests/integration/initial-supabase.test.js` verifica o contrato em ambiente isolado; configure o primeiro administrador conforme [SUPABASE.md](docs/SUPABASE.md).
 
 ## Permissões
 
@@ -142,7 +159,7 @@ O SQL inicial permite a todos os autenticados editar e excluir orçamentos e ite
 
 Implementado: o botão Imprimir em cada orçamento salvo abre uma prévia em nova janela para usuários autenticados e para o usuário local. O documento contém o nome configurado da empresa, cliente e CPF/CNPJ atual, código, emissão, validade, itens históricos, quantidades, preços, subtotais e total. Imprimir / Salvar PDF abre o diálogo nativo; selecione Salvar como PDF para exportar. Os controles não aparecem no documento impresso. Cabeçalhos/rodapés automáticos são configurados no navegador.
 
-`assets/js/budget-print.js` gera o documento com escape de texto e filtra itens pelo código do orçamento; `records.js` trata a ação delegada de `table.js`. Estilos de impressão são locais ao documento, com formato A4 e cabeçalho de tabela repetido em múltiplas páginas. Não há serviço externo, biblioteca nova, gravação no banco ou download automático. Pop-ups bloqueados geram orientação. Testes em `tests/budget-print.test.js` e `e2e/app.spec.js` verificam escape, separação de itens, conteúdo e controles ocultos em mídia de impressão.
+`assets/js/budget-print.js` gera o documento com escape de texto e filtra itens pelo código do orçamento; depois de abrir a prévia, conecta o botão Imprimir / Salvar PDF por evento JavaScript, compatível com a política de segurança do servidor. `records.js` trata a ação delegada de `table.js`. Estilos de impressão são locais ao documento, com formato A4 e cabeçalho de tabela repetido em múltiplas páginas. Não há serviço externo, biblioteca nova, gravação no banco ou download automático. Pop-ups bloqueados geram orientação. Testes em `tests/unit/budget-print.test.js` e `e2e/app.spec.js` verificam escape, separação de itens, conteúdo, chamada de impressão e controles ocultos em mídia de impressão.
 
 ## Aprovação de orçamentos
 

@@ -1,4 +1,4 @@
-# Issues e decisões técnicas
+# Issues e limitações conhecidas
 
 > Documento público. Não inclua tokens, senhas, e-mails, nomes de pessoas ou identificadores de projetos nos relatos.
 
@@ -6,18 +6,13 @@
 
 As regras funcionais de clientes, categorias, produtos e orçamentos estão implementadas e cobertas pelos testes locais. O armazenamento agora pode ser SQLite local ou Supabase configurado pelo operador. A migração pública do Supabase é a instalação única `supabase/migrations/202609080001_initial.sql`.
 
-## ISS-019 — ordem dos campos do orçamento
-
-Resolvida no contrato inicial. O único formato aceito é `[codigo, clienteCodigo, clienteNome, data, validade, total]`. Entradas com nome antes do código são rejeitadas antes da sincronização. O código do cliente é a referência relacional; o nome é retornado pelo `JOIN`.
+Contratos implementados ficam em [REQUIREMENTS.md](REQUIREMENTS.md) e [ARCHITECTURE.md](ARCHITECTURE.md). Melhorias futuras são acompanhadas somente em [ROADMAP.md](ROADMAP.md).
 
 ## Limitações conhecidas
 
 - A sessão Supabase não é renovada automaticamente; após expirar, entre novamente.
-- A validação de dígitos CPF/CNPJ ocorre no navegador e nas restrições de formato do banco, sem consulta cadastral externa.
+- A validação dos dígitos CPF/CNPJ ocorre no navegador; as restrições de formato do banco não substituem essa verificação. Não há consulta cadastral externa.
 - O SQLite local é de usuário único no mesmo computador e não oferece sincronização com Supabase.
 - A validação remota deve ser executada pelo operador em um projeto Supabase recém-criado, seguindo [SUPABASE.md](SUPABASE.md).
-- O pacote Windows pronto para uso pertence ao Plano 2 e ainda não é gerado nesta etapa.
-
-## Próximas melhorias
-
-Renovação de sessão, recuperação de senha, validação completa de limites no servidor Supabase, revisão independente de acessibilidade e empacotamento Windows são melhorias planejadas. Elas não fazem parte da instalação inicial documentada.
+- O launcher Windows opcional já existe, mas exige Node.js instalado. O pacote com Node.js incluído permanece pendente em RDM-006 do roadmap.
+- O seletor de pasta de backup e a abertura no Explorador dependem do Windows; a interface atual não oferece entrada manual do caminho em outros sistemas.

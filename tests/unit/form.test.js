@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createField } from '../assets/js/form.js';
+import { createField } from '../../assets/js/form.js';
 
 test('cria tipo de cliente como dropdown sem pesquisa', () => {
   const field = createField(

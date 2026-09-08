@@ -29,18 +29,21 @@ select { cursor: pointer; }
 .topbar {
   height: 68px;
   padding: 0 30px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   gap: 20px;
   background: var(--dark);
   color: white;
 }
 
-.brand { display: flex; align-items: center; gap: 12px; font-size: 25px; font-weight: bold; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: 25px; font-weight: bold; }
 .brand-icon { display: block; width: 40px; height: 40px; flex: 0 0 40px; }
-.topbar span { margin-left: auto; color: #d8dadd; }
+.topbar-status { overflow: hidden; color: #d8dadd; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-actions { display: flex; justify-content: flex-end; align-items: center; gap: 20px; min-width: 0; }
 .topbar b { width: 37px; height: 37px; display: grid; place-items: center; border-radius: 50%; background: #f8d2bd; color: #563422; }
-#storage-actions { display: flex; gap: 6px; margin-left: auto; }
+#storage-actions { display: flex; gap: 6px; }
+#storage-actions.hidden { display: none; }
 #storage-actions button { padding: 7px 10px; border: 1px solid #d8dadd; background: transparent; color: white; cursor: pointer; }
 #storage-actions button:hover { background: var(--orange); border-color: var(--orange); }
 
@@ -124,6 +127,14 @@ tr:hover td { background: #fff9f5; }
 .auth-panel > label, #supabase-settings label { display: grid; gap: 6px; margin: 12px 0; }
 .auth-panel select, .auth-panel input { width: 100%; min-height: 40px; padding: 8px; border: 1px solid var(--line); }
 .auth-panel #supabase-settings { padding: 4px 0 8px; border-bottom: 1px solid var(--line); }
+.auth-panel #local-backup-settings { padding: 4px 0 8px; border-bottom: 1px solid var(--line); }
+.auth-panel #local-backup-settings label { display: grid; gap: 6px; margin: 12px 0; }
+.backup-controls { display: flex; gap: 6px; }
+.backup-controls button { flex: 1; padding: 7px 10px; border: 1px solid #d8dadd; background: #27323c; color: white; cursor: pointer; }
+.backup-controls button:hover { background: var(--orange); border-color: var(--orange); }
+.backup-controls button:disabled { opacity: 0.6; cursor: wait; }
+.backup-directory { margin: 8px 0; overflow-wrap: anywhere; color: #59636c; }
+#local-help { text-align: center; }
 .auth-panel form, #delete-password form { grid-template-columns: 1fr; }
 #auth-error { color: #a32020; }
 #delete-password { max-width: min(450px, 95vw); border: 1px solid var(--line); }
@@ -142,6 +153,7 @@ form select { border-left: 3px solid var(--orange); background-color: #fffaf7; }
 .field-label { display: block; }
 .dropdown { position: relative; margin-top: 6px; }
 .dropdown-value { display: none; }
+.auth-panel .dropdown-value { display: none; }
 .dropdown-toggle { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px; border: 1px solid #ccd1d3; border-left: 3px solid var(--orange); background: #fffaf7; color: var(--text); text-align: left; cursor: pointer; }
 .dropdown-icon { display: inline-grid; flex: 0 0 24px; height: 24px; place-items: center; margin: -2px -4px -2px 8px; font-size: 18px; line-height: 1; }
 .dropdown-toggle:focus { border-color: var(--orange); outline: 0; box-shadow: 0 0 0 3px #ff7a2f26; }
@@ -197,7 +209,8 @@ button:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; box-shad
   aside.menu-open { display: block; position: fixed; top: 68px; bottom: 0; left: 48px; z-index: 4; overflow-y: auto; width: min(280px, calc(100vw - 48px)); box-shadow: 8px 0 24px #0005; }
   .topbar { padding: 0 12px; }
   .brand { font-size: 17px; }
-  .topbar span, aside { display: none; }
+  .topbar-status, aside { display: none; }
+  .topbar { grid-template-columns: 1fr auto; gap: 12px; }
   .content { padding: 24px 18px; }
   .cards { grid-template-columns: 1fr; }
   .heading { flex-direction: column; align-items: start; gap: 12px; }
@@ -238,3 +251,15 @@ button:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; box-shad
 .approval-details { display: grid; gap: 5px; min-width: 0; }
 .approval-details strong { color: var(--text); font-size: 14px; }
 .approval-details span { color: var(--muted); font-size: 12px; }
+#settings-dialog { width: min(540px, 95vw); padding: 0; border: 1px solid var(--line); background: white; }
+#settings-dialog::backdrop { background: #12191e99; }
+#settings-dialog header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; background: #27323c; color: white; }
+#settings-dialog h2 { margin: 0; font-size: 18px; }
+#settings-dialog header button { border: 0; background: transparent; color: white; font-size: 22px; cursor: pointer; }
+#settings-dialog section, #settings-dialog > p { margin: 0; padding: 18px 22px 0; }
+#settings-dialog section > p:first-child { margin-top: 0; }
+#settings-dialog section > button { padding: 7px 10px; border: 1px solid #d8dadd; background: #27323c; color: white; cursor: pointer; }
+#settings-dialog label { display: grid; gap: 6px; margin: 14px 0 6px; color: #59636c; font-size: 12px; font-weight: bold; }
+#settings-dialog footer { display: flex; justify-content: flex-end; gap: 8px; padding: 18px 22px; }
+#settings-dialog .secondary { padding: 10px 14px; border: 1px solid var(--line); background: white; cursor: pointer; }
+#settings-error { color: #a32020; }
