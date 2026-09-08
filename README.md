@@ -25,9 +25,9 @@ No SQLite local o banco é criado vazio em `%LOCALAPPDATA%\ProductBudgetControl`
 
 Ao escolher SQLite local, selecione uma pasta para os backups automáticos. A escolha fica salva neste computador e o Atlas cria uma cópia ao aplicar a configuração, novas cópias no intervalo escolhido (15 minutos por padrão) e uma cópia no encerramento normal do servidor quando a revisão dos dados mudou desde o último backup automático. A pasta escolhida recebe a subpasta `Atlas Backups`, que mantém as 30 cópias automáticas mais recentes. A falta de energia ou o encerramento forçado podem impedir a cópia final. Fechar apenas o navegador não encerra o servidor.
 
-Ao selecionar SQLite local na tela inicial, use **Escolher pasta** para abrir o diálogo do Windows e então **Salvar backups**. O caminho escolhido é exibido abaixo dos botões. Você pode alterar a pasta ou o intervalo de 5, 15, 30 ou 60 minutos antes de abrir o banco. Depois de entrar, **Backup** cria uma cópia manual e abre `Atlas Backups` no Explorador do Windows; as cópias manuais não entram no limite das 30 cópias automáticas.
+Ao selecionar SQLite local na tela inicial, use **Escolher pasta** para abrir o diálogo do Windows e então **Salvar backups**. O caminho escolhido é exibido abaixo dos botões. Você pode alterar a pasta ou o intervalo de 5, 15, 30 ou 60 minutos antes de abrir o banco. Depois de entrar, **Configurações > Backup manual** cria uma cópia manual e abre `Atlas Backups` no Explorador do Windows; as cópias manuais não entram no limite das 30 cópias automáticas.
 
-O intervalo usa o mesmo dropdown da escolha de armazenamento e passa a valer ao salvar os backups: o servidor cancela a programação anterior e inicia uma única nova contagem. Os botões Backup e Restaurar ficam disponíveis somente após abrir SQLite local. A engrenagem abre **Configurações**: no banco local ela permite alterar a pasta e o intervalo, mostra o último backup automático ou erro; no Supabase explica que esses ajustes não se aplicam. Cancelar a janela descarta o rascunho.
+O intervalo usa o mesmo dropdown da escolha de armazenamento e passa a valer ao salvar os backups: o servidor cancela a programação anterior e inicia uma única nova contagem. Os botões Alterar pasta, Backup manual e Restaurar ficam juntos nas Configurações, disponíveis após abrir SQLite local. Backup manual usa a pasta salva; para usar uma nova pasta, salve as alterações antes. Alterar pasta mostra feedback ao passar o mouse, clicar e aguardar o seletor. A engrenagem abre **Configurações**: no banco local ela permite alterar a pasta e o intervalo, mostra o último backup automático ou erro; no Supabase explica que esses ajustes não se aplicam. Cancelar a janela descarta o rascunho.
 
 ## Validação e testes
 
@@ -57,7 +57,7 @@ npm.cmd run test:e2e
 
 ## Funcionalidades
 
-- Navegação entre Clientes, Produtos e Orçamentos. Orçamentos oferece Listar, Orçamentos aprovados, Itens do orçamento e Novo orçamento, nessa ordem. O cabeçalho central mostra o nome configurado da empresa e a data local, preservando Atlas como marca fixa.
+- Navegação entre Clientes, Produtos e Orçamentos. Orçamentos oferece Listar, Orçamentos aprovados pelo cliente, Itens do orçamento e Novo orçamento, nessa ordem. O cabeçalho central mostra o nome configurado da empresa e a data local, preservando Atlas como marca fixa. Sair é um ícone acessível no rodapé da barra esquerda.
 - Menu móvel para telas de até 760 px, com botão, foco, Escape e fechamento ao navegar ou clicar fora.
 - Pesquisa compartilhada, filtros de tipo, categoria e status, tabelas de até 10 registros e paginação. Categoria aplica o filtro imediatamente.
 - Inclusão limpa filtros pelo botão principal e pelos submenus; cancelar mantém filtros limpos. Edição preserva filtros. Salvar inclusão revela o registro na última página.
@@ -71,7 +71,7 @@ npm.cmd run test:e2e
 - Novo orçamento seleciona cliente, validade e quantidades inteiras positivas. Filtros da seleção preservam quantidades. Salvar exige ao menos um item e calcula os totais; editar preserva a data e recalcula o total dos itens. Excluir orçamento remove seus itens na mesma gravação.
 - Exclusão solicita confirmação; no Supabase também verifica a senha pelo Auth. No banco, exclusão de clientes/categorias/produtos exige administrador, enquanto orçamentos podem ser excluídos por todos os autenticados ou pelo usuário local. Login, carregamento, gravação, recarga e logout estão implementados.
 - Falhas de gravação restauram o estado anterior; conflitos de revisão impedem sobrescrita por outra sessão.
-- O modo SQLite local funciona sem login e sem internet, salva o nome da empresa e oferece backup/restauração no cabeçalho. O modo Supabase usa o projeto informado pelo operador.
+- O modo SQLite local funciona sem login e sem internet, salva o nome da empresa e oferece backup/restauração nas Configurações. O modo Supabase usa o projeto informado pelo operador.
 - Texto escapado nas tabelas e inserido com `textContent` nas listas; botões de ícone possuem nomes acessíveis e foco visível.
 
 ## Limitações
@@ -131,7 +131,7 @@ Para contribuir, leia [CONTRIBUTING.md](CONTRIBUTING.md). A automação em `.git
 
 ### Novo orçamento: seleção e revisão de itens
 
-A tela inicial permite escolher SQLite local ou Supabase e definir o nome da empresa exibido na aplicação e na impressão. O SQLite não exige login e funciona sem internet; o Supabase usa as credenciais informadas pelo operador. O cabeçalho do modo local oferece backup e restauração validados.
+A tela inicial permite escolher SQLite local ou Supabase e definir o nome da empresa exibido na aplicação e na impressão. O SQLite não exige login e funciona sem internet; o Supabase usa as credenciais informadas pelo operador. As Configurações do modo local oferecem backup e restauração validados.
 
 A seleção inicial do orçamento exibe somente o nome do cliente, mantendo o código como referência interna. A etapa de itens usa duas colunas: produtos e quantidades à esquerda, lista adicionada e total à direita. ADICIONAR ITENS transfere as quantidades para o rascunho e limpa a seleção; adicionar novamente o mesmo produto soma sua quantidade. Itens podem ser removidos da lista. SALVAR ORÇAMENTO exige validade e ao menos um item adicionado, e grava somente a lista da direita. No celular, as colunas ficam empilhadas.
 
@@ -163,13 +163,13 @@ Implementado: o botão Imprimir em cada orçamento salvo abre uma prévia em nov
 
 ## Aprovação de orçamentos
 
-Implementado no código: no menu de Orçamentos, Listar orçamentos aparece antes de Orçamentos aprovados. O submenu Orçamentos aprovados lista apenas aprovados, com pesquisa e paginação. O botão Aprovar orçamento fica no cabeçalho, depois de Novo orçamento, com 14 px de espaço entre os botões; abre a seleção de um orçamento pendente e pede confirmação. Não há botão de aprovação nas linhas. Todos os autenticados não anônimos podem aprovar. Não há estados Enviado/Cancelado, reversão de aprovação nem bloqueio de edição: editar um aprovado mantém sua aprovação, conforme o escopo limitado desta entrega.
+Implementado no código: no menu de Orçamentos, Listar orçamentos aparece antes de Orçamentos aprovados pelo cliente. A listagem geral mostra a situação Pendente ou Aprovado pelo cliente; o submenu dedicado lista apenas os aprovados, com pesquisa e paginação. O botão Aprovar orçamento fica no cabeçalho, depois de Novo orçamento, com 14 px de espaço entre os botões; abre a seleção de um orçamento pendente e confirma que será registrado o aceite do cliente. Não há botão de aprovação nas linhas. Todos os autenticados não anônimos podem aprovar. A aprovação não representa pagamento. Não há estados Enviado/Cancelado, reversão de aprovação nem bloqueio de edição: editar um aprovado mantém sua aprovação, conforme o escopo limitado desta entrega.
 
 A coluna `orcamento.aprovado` começa falsa. `atlas_approve_budget(expected_revision,budget_code)` usa a revisão global e grava atomicamente; repetição, orçamento inexistente e acesso anônimo são rejeitados. `atlas_load_workspace()` retorna `approved_codes` e os arrays de orçamento têm seis campos.
 
-No submenu Orçamentos aprovados, a única ação por linha é Baixar PDF, que abre a prévia e permite Salvar como PDF pelo diálogo nativo do navegador. Não há ações de edição, exclusão ou aprovação nessa listagem; a listagem normal mantém as ações existentes. Pesquisa e paginação preservam o vínculo com o orçamento original. Esta alteração de interface não exige nova migração SQL.
+No submenu Orçamentos aprovados pelo cliente, a única ação por linha é Baixar PDF, que abre a prévia e permite Salvar como PDF pelo diálogo nativo do navegador. Não há ações de edição, exclusão ou aprovação nessa listagem; a listagem normal mantém as ações existentes e acrescenta a situação calculada pelo código. Pesquisa e paginação preservam o vínculo com o orçamento original. Esta alteração de interface não exige nova migração SQL.
 
-A aprovação é iniciada exclusivamente pelo botão do cabeçalho Aprovar orçamento. A janela segue o padrão visual de Novo orçamento, permite pesquisar por cliente ou código e mostra cada pendente em uma opção selecionável com código, cliente, data de criação e validade. Sem pendentes, o botão fica desabilitado. O submenu Orçamentos aprovados mantém apenas a ação PDF por linha. Não é necessária nova migração para essa mudança de interface.
+A aprovação é iniciada exclusivamente pelo botão do cabeçalho Aprovar orçamento. A janela segue o padrão visual de Novo orçamento, permite pesquisar por cliente ou código e mostra cada pendente em uma opção selecionável com código, cliente, data de criação e validade. Sem pendentes, o botão fica desabilitado. O submenu Orçamentos aprovados pelo cliente mantém apenas a ação PDF por linha. Não é necessária nova migração para essa mudança de interface.
 
 Nas listagens geral e de aprovados, Código do cliente aparece antes de Cliente. O contrato atual usa `[codigo, clienteCodigo, clienteNome, data, validade, total]`; a tabela relacional armazena `cliente_codigo` e o nome é obtido de `cliente` por `JOIN`.
 
@@ -180,6 +180,8 @@ Para demonstração opcional, execute `supabase/seeds/example_data.sql` somente 
 
 ## Armazenamento local e Supabase
 
-No modo local, `server.js` mantém o SQLite em `%LOCALAPPDATA%\ProductBudgetControl`, sem login e sem internet. O banco é criado vazio; o cabeçalho oferece backup e restauração validados, e o nome da empresa pode ser definido na primeira abertura.
+No modo local, `server.js` mantém o SQLite em `%LOCALAPPDATA%\ProductBudgetControl`, sem login e sem internet. O banco é criado vazio; as Configurações oferecem backup e restauração validados, e o nome da empresa pode ser definido na primeira abertura.
 
 No modo Supabase, a aplicação usa o projeto informado na tela, com login, RLS e permissões do SQL inicial. Os dois modos compartilham o contrato atual e não sincronizam dados entre si. A interface não contém URL, chave ou credenciais de produção.
+
+O seletor de pastas usa Windows PowerShell em modo STA. O script `server/windows-folder-picker.ps1` coloca a janela real do seletor acima do navegador e solicita foco uma vez. Se falhar ou exceder dois minutos, a tela mostra uma orientação para tentar novamente, sem exibir o comando interno. Cancelar mantém a pasta anterior. A confirmação visual desse comportamento depende do teste no Windows pelo launcher e por `npm start`.

@@ -114,13 +114,16 @@ export function setupSession({ render, resetFilters, closeModal }) {
   settingsDialog.onclose = () => { settingsDraft = null; settingsButton.focus(); };
   get('#settings-choose-directory').onclick = async () => {
     const choose = get('#settings-choose-directory');
+    const draft = settingsDraft;
+    if (!draft) return;
     choose.disabled = true;
+    choose.textContent = 'Escolhendo pasta…';
     settingsError.textContent = '';
     try {
       const result = await chooseBackupDirectory();
-      if (result.directory) { settingsDraft.directory = result.directory; settingsDirectory.textContent = result.directory; }
+      if (result.directory && settingsDraft === draft) { draft.directory = result.directory; settingsDirectory.textContent = result.directory; }
     } catch (error) { settingsError.textContent = error.message; }
-    finally { choose.disabled = false; }
+    finally { choose.disabled = false; choose.textContent = 'Alterar pasta'; }
   };
   settingsInterval.onchange = () => { if (settingsDraft) settingsDraft.intervalMinutes = Number(settingsInterval.value); };
   settingsSave.onclick = async () => {

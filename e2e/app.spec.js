@@ -43,12 +43,25 @@ test('modo local abre sem login e apresenta ferramentas de backup', async ({ pag
   await page.locator('#company-name').fill('Empresa local de teste');
   await page.getByRole('button', { name: 'ABRIR BANCO LOCAL', exact: true }).click();
   await expect(page.locator('#application')).toBeVisible();
-  await expect(page.locator('#storage-actions')).toBeVisible();
+  await expect(page.locator('#storage-actions')).toBeHidden();
+  await expect(page.locator('.icons > #exit')).toBeVisible();
+  await expect(page.locator('aside > #exit')).toHaveCount(0);
+  const [desktopBar, desktopExit] = await Promise.all([page.locator('.icons').boundingBox(), page.locator('#exit').boundingBox()]);
+  expect(Math.abs((desktopExit.y + desktopExit.height) - (desktopBar.y + desktopBar.height))).toBeLessThanOrEqual(1);
   await expect(page.locator('#brand-name')).toHaveText('Atlas');
   await expect(page.locator('#header-company-name')).toHaveText('Empresa local de teste');
   await page.locator('#settings-button').click();
   await expect(page.locator('#settings-dialog')).toBeVisible();
   await expect(page.locator('#settings-directory')).toContainText('.test-backups');
+  await expect(page.locator('#settings-dialog #download-backup')).toHaveText('Backup manual');
+  await expect(page.locator('#settings-dialog #restore-backup')).toBeVisible();
+  await page.route('**/api/backup-folder', (route) => route.fulfill({ json: { directory: 'C:\\Backups de teste' } }));
+  const chooseFolder = page.locator('#settings-choose-directory');
+  const originalBackground = await chooseFolder.evaluate((button) => getComputedStyle(button).backgroundColor);
+  await chooseFolder.hover();
+  expect(await chooseFolder.evaluate((button) => getComputedStyle(button).backgroundColor)).not.toBe(originalBackground);
+  await chooseFolder.click();
+  await expect(page.locator('#settings-directory')).toHaveText('C:\\Backups de teste');
   await page.locator('#settings-interval-toggle').click();
   await page.locator('#settings-interval-options [data-dropdown-option="30"]').click();
   await expect(page.locator('#settings-interval-toggle [data-dropdown-label]')).toHaveText('A cada 30 minutos');
@@ -154,6 +167,13 @@ test('falha e conflito de salvamento preservam dados anteriores e formulário', 
 test('menu móvel abre com foco, navega e fecha por Escape e clique externo', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await backend(page);
+  const iconBar = page.locator('.icons');
+  const exit = iconBar.locator('#exit');
+  await expect(exit).toHaveAttribute('title', 'Sair');
+  const [barBox, exitBox] = await Promise.all([iconBar.boundingBox(), exit.boundingBox()]);
+  expect(Math.abs((exitBox.y + exitBox.height) - (barBox.y + barBox.height))).toBeLessThanOrEqual(1);
+  await exit.focus();
+  await expect(exit).toBeFocused();
   const toggle = page.locator('#menu-toggle');
   await expect(page.locator('aside')).toBeHidden();
   await toggle.click();
@@ -366,19 +386,21 @@ test('budget print preview contains only selected budget and hides controls when
   await preview.close();
 });
 
-test('approved menu contains only approved budgets with PDF as its only action', async ({ page }) => {
+test('situação identifica o aceite e a lista aprovada mantém somente PDF', async ({ page }) => {
   await backend(page, fixtures, false);
   const budgetSubmenuLabels = await page.locator('[data-menu="orcamentos"].sub').allTextContents();
   expect(budgetSubmenuLabels.indexOf('Listar orçamentos')).toBeLessThan(
-    budgetSubmenuLabels.indexOf('Orçamentos aprovados')
+    budgetSubmenuLabels.indexOf('Orçamentos aprovados pelo cliente')
   );
   await section(page,'Orçamentos');
   await expect(page.locator('#thead th').nth(1)).toHaveText('Código do cliente');
   await expect(page.locator('#thead th').nth(2)).toHaveText('Cliente');
   await expect(page.locator('#tbody td').nth(1)).toHaveText('1');
   await expect(page.locator('#tbody td').nth(2)).toHaveText('Construtora Horizonte');
-  await page.getByRole('button',{name:'Orçamentos aprovados',exact:true}).click();
-  await expect(page.locator('#title')).toHaveText('ORÇAMENTOS APROVADOS');
+  await expect(page.locator('#thead')).toContainText('Situação');
+  await expect(page.locator('#tbody .status')).toHaveText('Pendente');
+  await page.getByRole('button',{name:'Orçamentos aprovados pelo cliente',exact:true}).click();
+  await expect(page.locator('#title')).toHaveText('ORÇAMENTOS APROVADOS PELO CLIENTE');
   await expect(page.locator('#new')).toBeHidden();
   await expect(page.locator('#tbody')).toContainText('Nenhum registro encontrado.');
   await page.getByRole('button',{name:'Listar orçamentos',exact:true}).click();
@@ -395,7 +417,8 @@ test('approved menu contains only approved budgets with PDF as its only action',
   await expect(approve).toBeDisabled();
   await page.reload();
   await section(page,'Orçamentos');
-  await page.getByRole('button',{name:'Orçamentos aprovados',exact:true}).click();
+  await expect(page.locator('#tbody .status')).toHaveText('Aprovado pelo cliente');
+  await page.getByRole('button',{name:'Orçamentos aprovados pelo cliente',exact:true}).click();
   await expect(page.locator('#tbody tr')).toHaveCount(1);
   await expect(page.locator('#tbody button')).toHaveCount(1);
   await expect(page.locator('#thead th').nth(1)).toHaveText('Código do cliente');

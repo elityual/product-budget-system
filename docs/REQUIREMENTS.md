@@ -76,8 +76,8 @@ Não há consulta externa de situação cadastral de CPF/CNPJ.
 | ORC-007 | Totais | O total de cada item é quantidade × preço unitário e o total do orçamento é a soma dos itens. Valores usam precisão de centavos. | Implementado |
 | ORC-008 | Edição | É possível trocar cliente, validade e itens; a data de emissão e os nomes e preços históricos dos itens já existentes são preservados. | Implementado |
 | ORC-009 | Exclusão | A exclusão pede confirmação e remove os itens vinculados na mesma gravação. | Implementado |
-| ORC-010 | Aprovação | Orçamentos pendentes podem ser aprovados pelo botão do cabeçalho, após seleção e confirmação; a aprovação é persistida e aparece na lista de aprovados. | Implementado |
-| ORC-011 | Aprovados | A lista de aprovados exibe somente registros aprovados, permite pesquisa e paginação e oferece apenas a ação de PDF. | Implementado |
+| ORC-010 | Aprovação | Orçamentos pendentes podem ser aprovados pelo botão do cabeçalho, após seleção e confirmação explícita de que será registrado o aceite do cliente. A aprovação é persistida, não significa pagamento e aparece como “Aprovado pelo cliente” na listagem geral. | Implementado |
+| ORC-011 | Aprovados | A lista “Orçamentos aprovados pelo cliente” exibe somente registros aprovados, permite pesquisa e paginação e oferece apenas a ação de PDF. A listagem geral mostra “Pendente” ou “Aprovado pelo cliente” antes das ações. | Implementado |
 | ORC-012 | Edição de aprovados | Editar um orçamento aprovado mantém sua aprovação. Estados Enviado e Cancelado, reversão e bloqueio de edição não fazem parte do comportamento atual. | Implementado |
 | ORC-013 | Impressão | A prévia contém empresa, cliente, documento atual, código, emissão, validade, itens históricos, subtotais e total; controles de interface ficam ocultos na impressão. | Implementado |
 | ORC-014 | PDF | O botão da prévia abre o diálogo nativo do navegador para imprimir ou salvar como PDF, por evento JavaScript compatível com a política de segurança. | Implementado |
@@ -98,7 +98,7 @@ O rascunho é mantido no navegador até a confirmação de salvamento. Cancelar 
 ### Identidade e seleção de armazenamento
 
 - **UI-009 — Marca:** o título da aba e a marca fixa do cabeçalho exibem Atlas; o centro do cabeçalho mostra o nome configurado da empresa e a data, inclusive após restauração, enquanto orçamentos e PDFs usam o mesmo nome. **Implementado**.
-- **UI-011 — Configurações:** a engrenagem abre uma janela com rascunho de pasta e intervalo de backup no SQLite, último backup ou erro, salvar, cancelar, X e Escape; no Supabase informa que os backups locais não se aplicam. **Implementado**.
+- **UI-011 — Configurações:** a engrenagem abre uma janela com Alterar pasta, Backup manual e Restaurar agrupados, rascunho de pasta e intervalo no SQLite, último backup ou erro, salvar, cancelar, X e Escape. Alterar pasta apresenta hover, foco, clique e texto de espera; fechar a janela descarta retornos pendentes do seletor. Backup manual usa a pasta salva. No Supabase informa que os backups locais não se aplicam. **Implementado**.
 - **UI-010 — Armazenamento:** a tela inicial usa o dropdown compartilhado da interface para selecionar SQLite local ou Supabase, preservando os valores, a seleção salva e os campos de acesso de cada modo. **Implementado**.
 
 | ID | Requisito | Regra verificável | Estado |
@@ -106,7 +106,7 @@ O rascunho é mantido no navegador até a confirmação de salvamento. Cancelar 
 | ACS-001 | Escolha de acesso | A tela inicial permite escolher SQLite local ou Supabase; somente um armazenamento é usado por sessão. | Implementado |
 | ACS-002 | Login Supabase | O modo Supabase exige usuário autenticado não anônimo; senhas não são salvas, o token fica em sessionStorage e URL/chave publishable ficam em localStorage. | Implementado |
 | ACS-003 | Modo local | O SQLite local funciona sem login e sem internet para um usuário no mesmo computador. | Implementado |
-| ACS-004 | Logout | Sair revoga a sessão remota quando aplicável, remove tokens, limpa dados em memória e retorna à tela inicial mesmo se a revogação falhar. | Implementado |
+| ACS-004 | Logout | O ícone Sair fica no rodapé da barra estreita à esquerda, com nome acessível, foco e hover. Revoga a sessão remota quando aplicável, remove tokens, limpa dados em memória e retorna à tela inicial mesmo se a revogação falhar. | Implementado |
 | ACS-005 | Rascunho na saída | Sair com formulário aberto pede confirmação antes de descartar o rascunho. | Implementado |
 | ACS-006 | Permissões Supabase | Usuários autenticados podem consultar, incluir e editar; exclusões de clientes, categorias e produtos exigem administrador; orçamentos podem ser excluídos por autenticados. | Implementado |
 | ACS-007 | Permissões locais | O usuário local possui as permissões comerciais do banco local; exclusões continuam exigindo confirmação na interface, sem senha. | Implementado |
@@ -127,7 +127,7 @@ O rascunho é mantido no navegador até a confirmação de salvamento. Cancelar 
 | ARM-008 | Valores monetários | SQLite armazena centavos inteiros; Supabase usa precisão decimal de duas casas. | Implementado |
 | ARM-009 | Validação de fronteira | Limites numéricos e validação completa de documentos também no servidor Supabase. | Pendente |
 | ARM-010 | Backup automático local | SQLite local mostra na tela inicial os botões Escolher pasta e Salvar backups e um dropdown de intervalo; Configurações permite alterar esses valores após entrar. A configuração memoriza a pasta, substitui o temporizador ao salvar um novo intervalo e cria uma cópia ao aplicar a configuração. Cópias periódicas e no encerramento limpo dependem de mudança na revisão desde a última cópia automática; mantém 30 cópias automáticas. | Implementado |
-| ARM-011 | Backup manual local | O botão Backup cria uma cópia manual mesmo sem alterações e abre a pasta configurada no Explorador do Windows; cópias manuais não entram na retenção automática. | Implementado |
+| ARM-011 | Backup manual local | O botão Backup manual nas Configurações cria uma cópia manual mesmo sem alterações e abre a pasta salva no Explorador do Windows; cópias manuais não entram na retenção automática. | Implementado |
 
 O roteiro para validar uma instalação Supabase real está em [SUPABASE.md](SUPABASE.md). O teste PGlite da instalação inicial é local e não substitui esse roteiro.
 
@@ -160,3 +160,5 @@ O roteiro para validar uma instalação Supabase real está em [SUPABASE.md](SUP
 - O pacote Windows pronto para usuário final pertence à etapa separada registrada no [ROADMAP.md](ROADMAP.md).
 - A seleção nativa da pasta de backup e a abertura no Explorador estão disponíveis somente no Windows; a interface não oferece campo manual de caminho em outros sistemas.
 - Atualizações futuras devem alterar a linha do requisito afetado, conservar seu ID, atualizar a observação e sincronizar README e arquitetura quando instalação, fluxo ou tecnologia mudarem.
+
+Complemento implementado de ARM-010: o seletor Windows funciona em modo STA, identifica o diálogo visível do próprio processo e o coloca acima do navegador, solicitando foco uma vez. Cancelar preserva a pasta anterior. Falha ou timeout de dois minutos deve mostrar orientação legível, sem o comando PowerShell na tela Inicial ou em Configurações. A aceitação do foco depende de validação manual no Windows pelo launcher e por `npm start`.

@@ -74,9 +74,9 @@ export function createListing({ openModal, openBudgetClientSelection }) {
     const approving = state.currentPage === 'orcamentos' && state.currentBudgetAction === 'aprovados';
     const page = approving ? {
       ...pages.orcamentos,
-      title: 'ORÇAMENTOS APROVADOS',
-      subtitle: 'Orçamentos aprovados',
-      description: 'Consulte os orçamentos aprovados e gere o PDF.',
+      title: 'ORÇAMENTOS APROVADOS PELO CLIENTE',
+      subtitle: 'Orçamentos aprovados pelo cliente',
+      description: 'Consulte os orçamentos aprovados pelo cliente e gere o PDF.',
       button: '',
       headers: ['Código', 'Código do cliente', 'Cliente', 'Data', 'Validade', 'Valor total', 'Ações']
     } : pages[state.currentPage];
@@ -118,7 +118,8 @@ export function createListing({ openModal, openBudgetClientSelection }) {
         index,
         state.currentPage,
         permissions.isAdmin || state.currentPage === 'orcamentos',
-        approving
+        approving,
+        approvedBudgets.has(row[0])
       ))
       .join('') || `
       <tr>

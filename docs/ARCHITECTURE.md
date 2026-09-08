@@ -10,6 +10,12 @@ A aplicação é uma interface estática com módulos ES, servida por Node.js em
 
 ## Navegador
 
+A barra estreita de ícones é uma coluna sticky com a altura útil da janela; o cabeçalho também permanece sticky e Sair usa `margin-top: auto` para ocupar o rodapé. O botão conserva `#exit`, nome acessível e o controlador de sessão existente. Na listagem geral de orçamentos, `listing.js` consulta `approvedBudgets` pelo código e passa o resultado a `table.js`, que acrescenta o selo de situação sem modificar os arrays comerciais. A listagem dedicada não recebe essa coluna.
+
+Nas Configurações, a linha dos três botões aparece antes do texto “Pasta dos backups automáticos”, seguido pelo caminho selecionado e pelo intervalo.
+
+As Configurações agrupam Alterar pasta, Backup manual e Restaurar em `#storage-actions`, dentro de `#settings-local`; o cabeçalho não contém mais ações de backup. Os botões compartilham `.backup-controls`, com hover, foco, clique e estado desabilitado. O seletor exibe “Escolhendo pasta…” enquanto aguarda e só aplica o resultado ao rascunho que iniciou a seleção. Backup manual continua usando a pasta persistida; a restauração mantém seleção de arquivo e confirmação existentes.
+
 - `assets/js/data.js` mantém estado de navegação, permissões e coleções vazias; `assets/js/config.js` define páginas, campos e colunas.
 - `app.js`, `listing.js`, `records.js`, `budget-flow.js`, `relations.js`, `navigation.js`, `form.js`, `table.js`, `validation.js` e `budget.js` são controladores e regras da interface.
 - `session.js` controla elementos HTML da sessão, o nome exibido da empresa no cabeçalho, confirmação de restauração, backup manual e a janela de Configurações. A janela mantém pasta e intervalo como rascunho até salvar; no SQLite usa as mesmas APIs da tela inicial e, no Supabase, informa que o backup local não se aplica. Downloads e atualizações do DOM não pertencem ao armazenamento.
@@ -63,3 +69,5 @@ O SQLite cria backup diário ao iniciar e retém sete cópias. A restauração v
 - Código e comentários próprios usam português do Brasil, UTF-8 e imports relativos com extensão `.js`.
 
 O estado das regras comerciais está em [REQUIREMENTS.md](REQUIREMENTS.md), defeitos confirmados em [ISSUES.md](ISSUES.md) e trabalho posterior em [ROADMAP.md](ROADMAP.md).
+
+O seletor em `server/automatic-backups.js` carrega `server/windows-folder-picker.ps1` em UTF-8 e executa Windows PowerShell com `-NoProfile -STA -EncodedCommand` (script em Base64 UTF-16LE), saída UTF-8 e timeout de dois minutos. O script mantém uma janela proprietária invisível no monitor ativo e usa um temporizador Windows Forms para localizar somente a outra janela visível do próprio processo. Ao encontrá-la, aplica `SetWindowPos(HWND_TOPMOST)` ao diálogo real e solicita `SetForegroundWindow` uma vez; o temporizador para em seguida. Temporizador, diálogo e janela proprietária são descartados em `finally`; cancelamento retorna caminho vazio. Falhas são convertidas em mensagens para a interface, preservando a causa no servidor. `tests/unit/backup-directory.test.js` cobre o carregamento e a codificação do script, o contrato nativo, caminhos Unicode, cancelamento e mensagens de falha/timeout. O foco efetivo precisa ser confirmado manualmente no Windows.

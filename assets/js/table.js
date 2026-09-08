@@ -38,7 +38,7 @@ export function formatCurrency(value) {
   }).format(Number(value));
 }
 
-export function createRow(row, index, currentPage, canDelete = false, approvedOnly = false) {
+export function createRow(row, index, currentPage, canDelete = false, approvedOnly = false, isApproved = false) {
   const cells = row
     .map((value, column) => {
       const isItem = currentPage === 'itens';
@@ -78,9 +78,14 @@ export function createRow(row, index, currentPage, canDelete = false, approvedOn
     return `<tr>${cells}<td><button type="button" class="primary" data-action="print" data-index="${index}" aria-label="Baixar PDF do ${reference}">Baixar PDF</button></td></tr>`;
   }
 
+  const budgetStatus = currentPage === 'orcamentos'
+    ? `<td><span class="status${isApproved ? '' : ' pending'}">${isApproved ? 'Aprovado pelo cliente' : 'Pendente'}</span></td>`
+    : '';
+
   return `
     <tr>
       ${cells}
+      ${budgetStatus}
       <td>
         ${currentPage === 'orcamentos' ? `<button type="button" class="action" aria-label="Imprimir ${reference}" title="Imprimir / Salvar PDF" data-action="print" data-index="${index}"><span aria-hidden="true">⎙</span></button>` : ''}
         <button type="button" class="action" aria-label="Editar ${reference}" title="Editar ${reference}" data-action="edit" data-index="${index}"><span aria-hidden="true">✎</span></button>

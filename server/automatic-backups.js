@@ -45,11 +45,18 @@ export async function saveBackupSettings(config, input) {
   return settings;
 }
 
-export async function chooseBackupDirectory() {
-  if (process.platform !== 'win32') throw new Error('A seleção de pasta nativa está disponível somente no Windows. Informe o caminho manualmente.');
-  const script = "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.FolderBrowserDialog; if($d.ShowDialog() -eq 'OK'){[Console]::Write($d.SelectedPath)}";
-  const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 120000 });
-  return { directory: stdout.trim() };
+export async function chooseBackupDirectory({ platform = process.platform, execute = execFileAsync, loadScript = readFile } = {}) {
+  if (platform !== 'win32') throw new Error('A seleção de pasta nativa está disponível somente no Windows.');
+  try {
+    const script = await loadScript(new URL('./windows-folder-picker.ps1', import.meta.url), 'utf8');
+    const { stdout } = await execute('powershell.exe', ['-NoProfile', '-STA', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 120000, encoding: 'utf8' });
+    return { directory: stdout.trim() };
+  } catch (error) {
+    const message = error.killed
+      ? 'O tempo para escolher a pasta terminou. Clique em Escolher pasta e tente novamente.'
+      : 'Não foi possível abrir o seletor de pastas do Windows. Tente novamente; se o problema continuar, reinicie o Atlas.';
+    throw new Error(message, { cause: error });
+  }
 }
 
 async function writeBackup(config, db, reason) {

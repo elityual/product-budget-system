@@ -71,6 +71,13 @@ test('renderiza itens de orçamento com valores monetários e sem ações', () =
   assert.doesNotMatch(row, /onclick=/);
 });
 
+test('mostra a situação do orçamento somente na listagem geral', () => {
+  const budget = [102, 1, 'Cliente', '01/09/2026', '30/09/2026', 444.8];
+  assert.match(createRow(budget, 0, 'orcamentos', true, false, false), /class="status pending">Pendente/);
+  assert.match(createRow(budget, 0, 'orcamentos', true, false, true), /class="status">Aprovado pelo cliente/);
+  assert.doesNotMatch(createRow(budget, 0, 'orcamentos', true, true, true), /Aprovado pelo cliente|Pendente/);
+});
+
 test('escapa conteúdo de usuário ao renderizar células', () => {
   const row = createRow(
     [1, 'Pessoa Física', '111', '<img src=x onerror="alert(1)"> & Empresa'],

@@ -35,6 +35,9 @@ select { cursor: pointer; }
   gap: 20px;
   background: var(--dark);
   color: white;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: 25px; font-weight: bold; }
@@ -44,16 +47,17 @@ select { cursor: pointer; }
 .topbar b { width: 37px; height: 37px; display: grid; place-items: center; border-radius: 50%; background: #f8d2bd; color: #563422; }
 #storage-actions { display: flex; gap: 6px; }
 #storage-actions.hidden { display: none; }
-#storage-actions button { padding: 7px 10px; border: 1px solid #d8dadd; background: transparent; color: white; cursor: pointer; }
-#storage-actions button:hover { background: var(--orange); border-color: var(--orange); }
 
 /* Colunas de navegação e área de trabalho. */
 
 main { display: flex; min-height: calc(100vh - 68px); }
-.icons { width: 68px; background: #1e252c; }
+.icons { width: 68px; height: calc(100vh - 68px); display: flex; flex: 0 0 68px; flex-direction: column; position: sticky; top: 68px; align-self: flex-start; background: #1e252c; }
 .icons button { width: 100%; height: 65px; border: 0; border-bottom: 1px solid #313a43; background: transparent; color: #d8dde0; font-size: 20px; cursor: pointer; }
 .icons button:hover:not(:disabled) { background: var(--orange); color: white; }
+.icons button:focus-visible { outline: 2px solid var(--orange); outline-offset: -3px; }
 .icons button:disabled { opacity: 0.5; cursor: not-allowed; }
+.icons #exit { margin-top: auto; border-top: 1px solid #313a43; border-bottom: 0; }
+.icons svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 aside { width: 225px; padding-top: 25px; background: var(--navigation); color: white; }
 aside h2 { margin: 0 24px 12px; color: #bfc6cc; font-size: 12px; }
@@ -107,6 +111,7 @@ tr:hover td { background: #fff9f5; }
 .selectable-row:hover td { background: #fff0e8; }
 
 .status { padding: 4px 9px; border-radius: 15px; background: #e5f5ee; color: #177052; font-size: 12px; }
+.status.pending { background: #e7e9eb; color: #59636c; }
 
 .inactive { background: #f8e9e9; color: #806565; }
 
@@ -129,9 +134,11 @@ tr:hover td { background: #fff9f5; }
 .auth-panel #supabase-settings { padding: 4px 0 8px; border-bottom: 1px solid var(--line); }
 .auth-panel #local-backup-settings { padding: 4px 0 8px; border-bottom: 1px solid var(--line); }
 .auth-panel #local-backup-settings label { display: grid; gap: 6px; margin: 12px 0; }
-.backup-controls { display: flex; gap: 6px; }
+.backup-controls { display: flex; flex-wrap: wrap; gap: 6px; }
 .backup-controls button { flex: 1; padding: 7px 10px; border: 1px solid #d8dadd; background: #27323c; color: white; cursor: pointer; }
-.backup-controls button:hover { background: var(--orange); border-color: var(--orange); }
+.backup-controls button:hover:not(:disabled) { background: var(--orange); border-color: var(--orange); }
+.backup-controls button:active:not(:disabled) { background: #a74700; transform: translateY(1px); }
+.backup-controls button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 .backup-controls button:disabled { opacity: 0.6; cursor: wait; }
 .backup-directory { margin: 8px 0; overflow-wrap: anywhere; color: #59636c; }
 #local-help { text-align: center; }
@@ -258,7 +265,6 @@ button:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; box-shad
 #settings-dialog header button { border: 0; background: transparent; color: white; font-size: 22px; cursor: pointer; }
 #settings-dialog section, #settings-dialog > p { margin: 0; padding: 18px 22px 0; }
 #settings-dialog section > p:first-child { margin-top: 0; }
-#settings-dialog section > button { padding: 7px 10px; border: 1px solid #d8dadd; background: #27323c; color: white; cursor: pointer; }
 #settings-dialog label { display: grid; gap: 6px; margin: 14px 0 6px; color: #59636c; font-size: 12px; font-weight: bold; }
 #settings-dialog footer { display: flex; justify-content: flex-end; gap: 8px; padding: 18px 22px; }
 #settings-dialog .secondary { padding: 10px 14px; border: 1px solid var(--line); background: white; cursor: pointer; }

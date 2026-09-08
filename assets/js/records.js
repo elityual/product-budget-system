@@ -204,7 +204,7 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
 
   async function approveRecord(index) {
     const budget = data.orcamentos[index];
-    if (!budget || isSaving() || !confirm(`Aprovar o orçamento de código ${budget[0]}?`)) return;
+    if (!budget || isSaving() || !confirm(`Registrar que o cliente aprovou o orçamento de código ${budget[0]}?`)) return;
     setSaving(true);
     get('#application').inert = true;
     try {

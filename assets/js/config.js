@@ -40,7 +40,7 @@ const pageOrcamentos = {
   subtitle: 'Orçamentos',
   description: 'Acompanhe os orçamentos emitidos para seus clientes.',
   button: '+ NOVO ORÇAMENTO',
-  headers: ['Código', 'Código do cliente', 'Cliente', 'Data', 'Validade', 'Valor total', 'Ações'],
+  headers: ['Código', 'Código do cliente', 'Cliente', 'Data', 'Validade', 'Valor total', 'Situação', 'Ações'],
   fields: [
     ['cliente', 'Cliente', 'select'],
     ['validade', 'Data de validade', 'date']

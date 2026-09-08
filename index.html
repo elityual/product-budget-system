@@ -19,11 +19,6 @@
 
     <div class="topbar-status" title="Empresa e data atual"><span id="header-company-name">Atlas Máquinas & Obras</span> • <time id="current-date"></time></div>
     <div class="topbar-actions">
-    <div id="storage-actions" class="hidden">
-      <button type="button" id="download-backup" title="Salvar backup e abrir a pasta">Backup</button>
-      <button type="button" id="restore-backup" title="Restaurar backup">Restaurar</button>
-      <input id="restore-file" type="file" accept="application/json" hidden>
-    </div>
     <b>BD</b>
     </div>
 
@@ -87,6 +82,8 @@
 
       <button type="button" id="settings-button" aria-label="Configurações" title="Configurações"><span aria-hidden="true">⚙</span></button>
 
+      <button type="button" id="exit" aria-label="Sair" title="Sair"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h5v16h-5M10 8l4 4-4 4M14 12H3"/></svg></button>
+
     </nav>
     
     <!-- Opções baseadas nos requisitos consolidados em docs/REQUIREMENTS.md. -->
@@ -110,13 +107,12 @@
 
         <button class="sub" data-budget-action="listar" data-menu="orcamentos">Listar orçamentos</button>
 
-        <button class="sub" data-budget-action="aprovados" data-menu="orcamentos">Orçamentos aprovados</button>
+        <button class="sub" data-budget-action="aprovados" data-menu="orcamentos">Orçamentos aprovados pelo cliente</button>
 
         <button class="sub" data-page="itensOrcamento" data-menu="orcamentos">Itens do orçamento</button>
       
         <button class="sub" data-new="orcamentos" data-menu="orcamentos">Novo orçamento</button>
 
-      <button id="exit">Sair</button>
     </aside>
 
     <!-- Conteúdo principal: títulos, resumo, pesquisa e tabela. -->
@@ -235,8 +231,13 @@
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <header><h2 id="settings-title">Configurações</h2><button type="button" id="close-settings" aria-label="Fechar configurações" title="Fechar"><span aria-hidden="true">×</span></button></header>
     <section id="settings-local" class="hidden">
+      <div id="storage-actions" class="backup-controls hidden">
+        <button id="settings-choose-directory" type="button">Alterar pasta</button>
+        <button type="button" id="download-backup" title="Salvar backup na pasta configurada e abri-la">Backup manual</button>
+        <button type="button" id="restore-backup" title="Restaurar backup">Restaurar</button>
+      </div>
+      <input id="restore-file" type="file" accept="application/json" hidden>
       <p>Pasta dos backups automáticos</p>
-      <button id="settings-choose-directory" type="button">Alterar pasta</button>
       <p id="settings-directory" class="backup-directory">Nenhuma pasta selecionada.</p>
       <label for="settings-interval-toggle">Intervalo</label>
       <div class="dropdown" data-dropdown id="settings-interval-dropdown">
