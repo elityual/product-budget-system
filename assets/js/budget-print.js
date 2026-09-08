@@ -31,7 +31,7 @@ export function createBudgetDocument(budget, client, items) {
   @page { size: A4; margin: 16mm; }
   @media print { body { padding: 0; } .print-controls { display: none !important; } }
 </style></head><body>
-<div class="print-controls"><button type="button" onclick="window.print()">Imprimir / Salvar PDF</button>
+<div class="print-controls"><button id="print-budget" type="button">Imprimir / Salvar PDF</button>
 <p>Para gerar o PDF, escolha “Salvar como PDF” no destino da impressão. Desative cabeçalhos e rodapés do navegador se não quiser incluir URL e data de impressão.</p></div>
 <main><header><h1>${escape(company)}</h1><p>Gestão comercial</p></header>
 <h2>Orçamento nº ${escape(budget[0])}</h2>
@@ -61,5 +61,6 @@ export function printBudget(data, index) {
     preview.document.open();
     preview.document.write(documentHtml);
     preview.document.close();
+    preview.document.getElementById('print-budget').addEventListener('click', () => preview.print());
   }, 0);
 }

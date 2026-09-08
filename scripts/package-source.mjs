@@ -6,16 +6,15 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDirectory = join(root, 'release');
 const outputFile = join(outputDirectory, 'product-budget-control-source.tar.gz');
-const ignoredDirectories = new Set(['.git', '.local-data', '.npm-cache', '.test-data', 'backups', 'node_modules', 'release', 'test-results']);
-const ignoredFiles = new Set(['AGENTS.md']);
+const rootFiles = ['.gitignore', 'CONTRIBUTING.md', 'LICENSE', 'README.md', 'index.html', 'package.json', 'package-lock.json', 'playwright.config.js', 'server.js'];
+const publicDirectories = ['.github', 'assets', 'docs', 'e2e', 'launcher', 'scripts', 'server', 'supabase', 'tests'];
 
 async function listFiles(directory) {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
-    const fullPath = join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...await listFiles(fullPath));
-    else if (entry.isFile() && !ignoredFiles.has(entry.name) && !entry.name.endsWith('.sqlite') && !entry.name.endsWith('.sqlite-shm') && !entry.name.endsWith('.sqlite-wal') && !/^\.env(?:\.|$)/.test(entry.name)) files.push(fullPath);
+    const file = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await listFiles(file));
+    else if (entry.isFile()) files.push(file);
   }
   return files;
 }
@@ -44,7 +43,10 @@ function tarHeader(name, size, modified) {
   return header;
 }
 
-const files = (await listFiles(root)).sort();
+const files = [
+  ...rootFiles.map((file) => join(root, file)),
+  ...(await Promise.all(publicDirectories.map((directory) => listFiles(join(root, directory))))).flat()
+].sort();
 const chunks = [];
 for (const file of files) {
   const name = relative(root, file).replaceAll('\\', '/');

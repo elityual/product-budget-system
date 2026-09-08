@@ -1,7 +1,7 @@
 ﻿import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatCpf, isValidDocument, validateRecord } from '../assets/js/validation.js';
-import { createField } from '../assets/js/form.js';
+import { formatCpf, isValidDocument, validateRecord } from '../../assets/js/validation.js';
+import { createField } from '../../assets/js/form.js';
 
 test('valida CPF e CNPJ numéricos, com e sem pontuação, e seu tipo', () => {
   for (const value of ['529.982.247-25', '52998224725']) assert.ok(isValidDocument(value, 'Pessoa Física'));
@@ -68,7 +68,7 @@ test('CNPJ alfanumérico segue o exemplo oficial e preserva os dois DVs numéric
 });
 
 test('CNPJ usa máscara progressiva e duplicidade ignora caixa e pontuação', async () => {
-  const { formatCnpj } = await import('../assets/js/validation.js');
+  const { formatCnpj } = await import('../../assets/js/validation.js');
   assert.equal(formatCnpj('12abc34501de35'), '12.ABC.345/01DE-35');
   assert.equal(formatCnpj('11222333000181'), '11.222.333/0001-81');
   assert.equal(formatCnpj('12.ABC.345/01DE-35'), '12.ABC.345/01DE-35');

@@ -2,14 +2,66 @@ import { test, expect } from '@playwright/test';
 import { data as fixtures } from '../tests/fixtures/workspace.js';
 import { backend, section } from './helpers/backend.js';
 
+test('seletor de armazenamento abre, troca os campos e recupera a seleção salva', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('atlas.storage.mode', 'supabase'));
+  await page.goto('/');
+  const toggle = page.locator('#storage-mode-toggle');
+  await expect(toggle.locator('[data-dropdown-label]')).toHaveText('Supabase (nuvem)');
+  await toggle.click();
+  await expect(page.locator('#storage-mode-options')).toBeVisible();
+  await page.locator('#storage-mode-options [data-dropdown-option="local"]').click();
+  await expect(toggle.locator('[data-dropdown-label]')).toHaveText('Banco local neste computador');
+  await expect(page.locator('#supabase-settings')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'ABRIR BANCO LOCAL', exact: true })).toBeVisible();
+  await toggle.click();
+  await page.locator('#storage-mode-options [data-dropdown-option="supabase"]').click();
+  await expect(toggle.locator('[data-dropdown-label]')).toHaveText('Supabase (nuvem)');
+  await expect(page.locator('#supabase-settings')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'ENTRAR', exact: true })).toBeVisible();
+
+  await page.addInitScript(() => localStorage.setItem('atlas.storage.mode', 'local'));
+  await page.reload();
+  await expect(page.locator('#storage-mode-toggle [data-dropdown-label]')).toHaveText('Banco local neste computador');
+});
+
 test('modo local abre sem login e apresenta ferramentas de backup', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#storage-mode').selectOption('local');
+  await expect(page.locator('#storage-actions')).toBeHidden();
+  const status = await page.request.get('/api/status');
+  const { token } = await status.json();
+  await page.request.put('/api/backup-settings', { headers: { 'X-Atlas-Token': token }, data: { directory: '.test-backups', intervalMinutes: 15 } });
+  const localPayload = {
+    clientes: [[null, 'Pessoa Jurídica', '11.222.333/0001-81', 'Cliente local']],
+    categorias: [[null, 'Materiais']],
+    itens: [[null, 'Materiais', 'Cimento', 'Saco', 42.9, '01/01/1900', 'Ativo']],
+    orcamentos: [[null, 1, 'Cliente local', '01/01/1900', '31/12/2026', 0]],
+    itensOrcamento: [[null, 1, 'Cimento', 2, 42.9, 0]]
+  };
+  await page.request.post('/api/save', { headers: { 'X-Atlas-Token': token }, data: { expected_revision: 0, payload: localPayload } });
+  await page.locator('#storage-mode-dropdown .dropdown-toggle').click();
+  await page.locator('#storage-mode-options [data-dropdown-option="local"]').click();
   await page.locator('#company-name').fill('Empresa local de teste');
   await page.getByRole('button', { name: 'ABRIR BANCO LOCAL', exact: true }).click();
   await expect(page.locator('#application')).toBeVisible();
   await expect(page.locator('#storage-actions')).toBeVisible();
-  await expect(page.locator('#brand-name')).toHaveText('Empresa local de teste');
+  await expect(page.locator('#brand-name')).toHaveText('Atlas');
+  await expect(page.locator('#header-company-name')).toHaveText('Empresa local de teste');
+  await page.locator('#settings-button').click();
+  await expect(page.locator('#settings-dialog')).toBeVisible();
+  await expect(page.locator('#settings-directory')).toContainText('.test-backups');
+  await page.locator('#settings-interval-toggle').click();
+  await page.locator('#settings-interval-options [data-dropdown-option="30"]').click();
+  await expect(page.locator('#settings-interval-toggle [data-dropdown-label]')).toHaveText('A cada 30 minutos');
+  await page.locator('#settings-cancel').click();
+  await expect(page.locator('#settings-dialog')).toBeHidden();
+  await section(page, 'Orçamentos');
+  const opened = page.waitForEvent('popup');
+  await page.getByRole('button', { name: 'Imprimir orçamento de código 1', exact: true }).click();
+  const preview = await opened;
+  await preview.evaluate(() => { window.print = () => { document.body.dataset.printed = 'true'; }; });
+  await preview.getByRole('button', { name: 'Imprimir / Salvar PDF', exact: true }).click();
+  await expect(preview.locator('body')).toHaveAttribute('data-printed', 'true');
+  await preview.close();
 });
 
 test('CRUD de categoria persiste, renomeia produtos e bloqueia exclusão em uso', async ({ page }) => {
@@ -305,6 +357,9 @@ test('budget print preview contains only selected budget and hides controls when
   await expect(preview.locator('main')).toContainText(fixtures.clientes[0][2]);
   await expect(preview.locator('tbody tr')).toHaveCount(2);
   await expect(preview.locator('.total')).toContainText('444,80');
+  await preview.evaluate(() => { window.print = () => { document.body.dataset.printed = 'true'; }; });
+  await preview.getByRole('button', { name: 'Imprimir / Salvar PDF', exact: true }).click();
+  await expect(preview.locator('body')).toHaveAttribute('data-printed', 'true');
   await preview.emulateMedia({ media: 'print' });
   await expect(preview.locator('.print-controls')).toBeHidden();
   await expect(preview.locator('main')).toBeVisible();

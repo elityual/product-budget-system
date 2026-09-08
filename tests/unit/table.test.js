@@ -6,7 +6,7 @@ import {
   filterRows,
   paginateRows,
   recordsPerPage
-} from '../assets/js/table.js';
+} from '../../assets/js/table.js';
 
 test('limita cada página a dez registros', () => {
   const rows = Array.from({ length: 25 }, (_, index) => [`REG-${index + 1}`]);

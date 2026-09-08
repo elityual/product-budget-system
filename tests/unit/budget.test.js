@@ -9,7 +9,7 @@ import {
   filterBudgetProducts,
   formatDateForDisplay,
   formatDateForInput
-} from '../assets/js/budget.js';
+} from '../../assets/js/budget.js';
 
 test('pesquisa clientes pelo nome para iniciar um orçamento', () => {
   const clients = [
