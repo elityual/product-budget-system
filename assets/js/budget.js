@@ -43,6 +43,7 @@ export function createBudgetRecord({
   validity,
   total,
   existingRecord,
+  details = {},
   currentDate = new Date()
 }) {
   return [
@@ -51,7 +52,8 @@ export function createBudgetRecord({
     client,
     existingRecord?.[3] ?? formatCurrentDate(currentDate),
     formatDateForDisplay(validity),
-    total ?? existingRecord?.[5] ?? 0
+    total ?? existingRecord?.[5] ?? 0,
+    existingRecord?.[6] ?? details
   ];
 }
 
@@ -70,7 +72,8 @@ export function createBudgetItemRecords({ budgetCode, products, quantities }) {
       product[2],
       quantity,
       unitValue,
-      quantity * unitValue
+      quantity * unitValue,
+      product[3] ?? ''
     ]];
   });
 }

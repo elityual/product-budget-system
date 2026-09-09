@@ -5,6 +5,7 @@ import { createListing } from './listing.js';
 import { createRecords } from './records.js';
 import { createBudgetFlow } from './budget-flow.js';
 import { setupSession } from './session.js';
+import { createContacts } from './contacts.js';
 let saving = false;
 async function persist(previous) {
   saving = true;
@@ -45,10 +46,12 @@ const listing = createListing({
 });
 function render() { listing.render(); }
 const common = { render, resetFilters: listing.resetFilters, persist };
+const contacts = createContacts({ persist });
 const records = createRecords({ ...common,
   isSaving: () => saving, setSaving: (value) => { saving = value; },
   editBudget: (index) => budgetFlow.editBudget(index),
-  submitBudget: (...args) => budgetFlow.submit(...args)
+  submitBudget: (...args) => budgetFlow.submit(...args),
+  openContact: (index) => contacts.open(index)
 });
 const budgetFlow = createBudgetFlow({ ...common, closeModal: records.closeModal });
 updateHeaderDate();

@@ -7,7 +7,7 @@ import { getDeletionError, updateRelatedRecords } from './relations.js';
 import { confirmPassword, approveBudget, storageMode } from './backend.js';
 import { formatDateForInput, createBudgetRecord } from './budget.js';
 import { recordsPerPage } from './table.js';
-export function createRecords({ render, resetFilters, persist, isSaving, setSaving, submitBudget, editBudget }) {
+export function createRecords({ render, resetFilters, persist, isSaving, setSaving, submitBudget, editBudget, openContact }) {
   function askDeletionPassword() {
     const dialog = get('#delete-password');
     const field = dialog.querySelector('input');
@@ -55,6 +55,20 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
         <button class="primary">SALVAR</button>
       </div>
     `;
+
+    if (state.currentPage === 'clientes' && !isEditing) {
+      form.dataset.mode = 'new-client';
+      form.innerHTML = `<section class="client-create-section"><h3>Dados do cliente</h3>${pages.clientes.fields.map((field) => createField(field, data.categorias, dynamicOptions)).join('')}</section>
+        <section class="client-create-section"><h3>Contato obrigatório</h3><label>E-mail<input required name="email" type="email"></label><label class="new-client-person">Pessoa de contato<input name="pessoa" type="text"></label><div><span class="field-label">Telefones</span><div id="new-client-phones"></div><button class="secondary" type="button" id="new-client-add-phone">Adicionar telefone</button></div></section><div class="footer"><button class="secondary" type="button" id="cancel">Cancelar</button><button class="primary">SALVAR</button></div>`;
+      const phones = [''];
+      const renderPhones = () => { const holder = get('#new-client-phones'); holder.replaceChildren(); phones.forEach((value, phoneIndex) => { const row = document.createElement('div'); row.className = 'contact-row'; row.innerHTML = `<input required type="tel" aria-label="Telefone ${phoneIndex + 1}" value="${value}"><span class="principal-badge">${phoneIndex === 0 ? 'Principal' : 'Adicional'}</span>${phones.length > 1 ? '<button type="button" class="secondary">Remover</button>' : ''}`; const input = row.querySelector('input'); input.oninput = () => { phones[phoneIndex] = input.value; }; row.querySelector('button')?.addEventListener('click', () => { phones.splice(phoneIndex, 1); renderPhones(); }); holder.append(row); }); };
+      renderPhones(); get('#new-client-add-phone').onclick = () => { phones.push(''); renderPhones(); };
+      const person = form.querySelector('.new-client-person');
+      const updateContactType = () => { const legal = form.elements.tipo.value === 'Pessoa Jurídica'; person.classList.toggle('hidden', !legal); person.querySelector('input').required = legal; if (!legal) person.querySelector('input').value = ''; };
+      form.elements.tipo.addEventListener('change', updateContactType); updateContactType();
+      form.dataset.phones = JSON.stringify(phones);
+      form.querySelector('#new-client-phones').addEventListener('input', () => { form.dataset.phones = JSON.stringify(phones); });
+    }
 
     if (state.currentPage === 'orcamentos') {
       form.elements.cliente.replaceChildren(...data.clientes.map((client) =>
@@ -249,6 +263,12 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
           (item) => item[0] !== budgetCode
         );
       }
+      if (state.currentPage === 'clientes') {
+        const clientCode = data.clientes[index][0];
+        data.contatosClientes = data.contatosClientes.filter((row) => row[0] !== clientCode);
+        data.telefonesClientes = data.telefonesClientes.filter((row) => row[1] !== clientCode);
+        data.enderecosClientes = data.enderecosClientes.filter((row) => row[1] !== clientCode);
+      }
       data[state.currentPage].splice(index, 1);
       if (!await persist(previous)) return;
       render();
@@ -266,7 +286,8 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
     const button = event.target.closest('button[data-action]');
     if (!button || isSaving()) return;
     const index = Number(button.dataset.index);
-    if (button.dataset.action === 'print' && state.currentPage === 'orcamentos') printBudget(data, index);
+    if (button.dataset.action === 'print' && state.currentPage === 'orcamentos') printBudget(data, index, approvedBudgets.has(data.orcamentos[index][0]));
+    if (button.dataset.action === 'contact' && state.currentPage === 'clientes') openContact(index);
     if (button.dataset.action === 'edit') edit(index);
     if (button.dataset.action === 'delete') void removeRecord(index);
   });
@@ -279,6 +300,19 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
     if (['budget-client-selection', 'budget-items'].includes(form.dataset.mode)) {
       await submitBudget(form, previous);
       return;
+    }
+    if (form.dataset.mode === 'new-client') {
+      const result = validateRecord('clientes', Object.fromEntries(new FormData(form)), data.clientes);
+      for (const [name, message] of Object.entries(result.errors)) form.elements[name].setCustomValidity(message);
+      const phones = [...form.querySelectorAll('#new-client-phones input')].map((input) => input.value.trim());
+      if (!phones.length || phones.some((phone) => !phone)) { alert('Informe pelo menos um telefone.'); return; }
+      if (!form.elements.email.reportValidity()) return;
+      if (result.errors.documento || result.errors.nome || !form.reportValidity()) return;
+      data.novoClienteContato = { email: form.elements.email.value.trim(), pessoa: form.elements.tipo.value === 'Pessoa Jurídica' ? form.elements.pessoa.value.trim() : '', telefones: phones };
+      data.clientes.push([null, result.values.tipo, result.values.documento, result.values.nome]);
+      state.currentTablePage = Math.ceil(data.clientes.length / recordsPerPage);
+      if (!await persist(previous)) return;
+      closeModal(); render(); return;
     }
     const categoryField = form.elements.categoria;
 
@@ -311,7 +345,9 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
         state.currentPage === 'clientes' ? 'deste cliente'
           : state.currentPage === 'itens' ? 'deste produto' : 'desta categoria';
 
-      if (!confirm(`Confirma a alteração dos dados ${recordReference}?`)) {
+      const removesContactPerson = state.currentPage === 'clientes' && data.clientes[index][1] === 'Pessoa Jurídica' && values[0] === 'Pessoa Física' && data.contatosClientes.some((row) => row[0] === data.clientes[index][0] && row[2]);
+      const warning = removesContactPerson ? ' A pessoa de contato vinculada será removida.' : '';
+      if (!confirm(`Confirma a alteração dos dados ${recordReference}?${warning}`)) {
         return;
       }
     }
@@ -360,8 +396,13 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
       }
     } else if (index !== undefined) {
       const recordCode = data[state.currentPage][index][0];
-      updateRelatedRecords(data, state.currentPage, data[state.currentPage][index], [recordCode, ...values]);
-      data[state.currentPage][index] = [recordCode, ...values];
+      const record = [recordCode, ...values];
+      if (state.currentPage === 'clientes' && record[1] === 'Pessoa Física') {
+        const contact = data.contatosClientes.find((row) => row[0] === recordCode);
+        if (contact) contact[2] = '';
+      }
+      updateRelatedRecords(data, state.currentPage, data[state.currentPage][index], record);
+      data[state.currentPage][index] = record;
     } else {
       const recordCode = null;
       data[state.currentPage].push([recordCode, ...values]);

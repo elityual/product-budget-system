@@ -60,7 +60,9 @@
       </div>
       <p id="backup-status" aria-live="polite"></p>
     </div>
-    <label id="company-setting">Nome da empresa<input id="company-name" type="text" value="Atlas Máquinas & Obras" maxlength="160" autocomplete="organization"></label>
+    <div id="company-setting"><label>Nome da empresa<input id="company-name" type="text" value="Atlas Máquinas & Obras" maxlength="160" autocomplete="organization"></label>
+      <label>CNPJ<input id="company-cnpj" type="text"></label><label>Endereço<input id="company-address" type="text"></label>
+      <label>Telefone<input id="company-phone" type="tel"></label><label>E-mail<input id="company-email" type="email"></label></div>
     <form id="auth-form">
       <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
       <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
@@ -230,6 +232,7 @@
   </dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <header><h2 id="settings-title">Configurações</h2><button type="button" id="close-settings" aria-label="Fechar configurações" title="Fechar"><span aria-hidden="true">×</span></button></header>
+    <section id="settings-company"><label>Nome da empresa<input id="settings-company-name" type="text"></label><label>CNPJ<input id="settings-company-cnpj" type="text"></label><label>Endereço<input id="settings-company-address" type="text"></label><label>Telefone<input id="settings-company-phone" type="tel"></label><label>E-mail<input id="settings-company-email" type="email"></label></section>
     <section id="settings-local" class="hidden">
       <div id="storage-actions" class="backup-controls hidden">
         <button id="settings-choose-directory" type="button">Alterar pasta</button>
@@ -251,6 +254,7 @@
     <p id="settings-error" role="alert"></p>
     <footer><button type="button" class="secondary" id="settings-cancel">Cancelar</button><button type="button" class="primary" id="settings-save">Salvar alterações</button></footer>
   </dialog>
+  <dialog id="contact-dialog" aria-labelledby="contact-title"><header><h2 id="contact-title">Contato</h2><button type="button" id="close-contact" aria-label="Fechar contato">×</button></header><p id="contact-identity"></p><form id="contact-form"></form></dialog>
 </body>
 
 </html>

@@ -5,7 +5,7 @@ O Supabase é opcional. Escolha “Banco local neste computador” para usar SQL
 ## Criar o projeto
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo.
-2. Abra o SQL Editor e execute o arquivo inteiro [`supabase/migrations/202609080001_initial.sql`](../supabase/migrations/202609080001_initial.sql). Ele cria as tabelas vazias, relações, regras de segurança e RPCs finais.
+2. Abra o SQL Editor e execute, nesta ordem, os arquivos inteiros [`supabase/migrations/202609080001_initial.sql`](../supabase/migrations/202609080001_initial.sql) e [`supabase/migrations/202609090001_quotation_details.sql`](../supabase/migrations/202609090001_quotation_details.sql). Eles criam as tabelas vazias, contatos relacionados, regras de segurança e RPCs atuais.
 3. Em Authentication > Users, crie um usuário confirmado com e-mail e senha.
 4. No SQL Editor, defina esse usuário como administrador, substituindo o e-mail:
 
@@ -45,11 +45,19 @@ RLS permite leitura apenas a sessões autenticadas não anônimas. Escritas dire
 
 ## Problemas comuns
 
+### Orçamento rejeitado por user_id nulo (23502)
+
+Se criar orçamento retornar `null value in column "user_id" of relation "orcamento"`, execute o arquivo completo [`202609090002_legacy_budget_user.sql`](../supabase/migrations/202609090002_legacy_budget_user.sql), após a migração de detalhes. Ele define `auth.uid()` como valor padrão da coluna legada, mantendo NOT NULL, chaves estrangeiras, dados existentes e políticas. É reaplicável e não altera instalações sem essa coluna. Recarregue o Atlas e tente salvar novamente. O projeto remoto precisa ser validado pelo operador; os testes locais verificam a compatibilidade em PostgreSQL isolado.
+
 ### Gravação bloqueada por DELETE ou UPDATE sem WHERE
 
 Se o cadastro retornar `21000: DELETE requires a WHERE clause`, execute **somente** o arquivo inteiro [`202609080002_safe_workspace_writes.sql`](../supabase/migrations/202609080002_safe_workspace_writes.sql) no SQL Editor do projeto já instalado. Ele substitui `atlas_save_workspace` e `atlas_approve_budget` em uma transação, preservando tabelas, dados e permissões. Não execute novamente a migração inicial sobre o banco existente e não desative a proteção de gravação.
 
 A migração inicial já contém a correção para projetos novos. Depois de aplicar a correção em um projeto existente, recarregue o Atlas e cadastre um cliente; confira também os itens, totais e aprovação de um orçamento existente. A confirmação remota permanece pendente até essa verificação. O PGlite testa as transações e a preservação de dados, mas não reproduz a extensão de proteção do projeto Supabase.
+
+Para habilitar contatos, perfil completo da empresa e snapshots do PDF em uma instalação existente, execute depois a migração `202609090001_quotation_details.sql`. Ela é reaplicável, migra os campos antigos de contato sem duplicá-los e substitui as RPCs pelo contrato atual. Nesse contrato, a criação de cliente envia um rascunho transitório `novoClienteContato`: e-mail válido e telefone são obrigatórios, e Pessoa Jurídica exige pessoa de contato. A RPC grava o cliente e esses contatos na mesma transação; clientes antigos sem essas informações permanecem carregáveis até sua edição de contato.
+
+Essa migração confirma que `cliente.codigo` é uma chave primária ou única antes de criar as chaves estrangeiras. Em instalações antigas sem essa restrição, ela adiciona `cliente_codigo_unico`; se houver código nulo ou repetido, interrompe a transação com uma mensagem específica para que os dados sejam corrigidos primeiro.
 
 - “Configure a URL e a chave”: selecione Supabase e preencha ambos os campos; use Project URL e Publishable key, sem barras extras na URL.
 - “Sessão expirada”: entre novamente. A versão atual não renova tokens automaticamente.

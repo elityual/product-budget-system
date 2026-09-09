@@ -9,7 +9,7 @@ import { closeDatabase, openDatabase } from '../../server/database.js';
 import { createHttpServer } from '../../server/http.js';
 import { saveBackupSettings, startAutomaticBackups } from '../../server/automatic-backups.js';
 
-const empty = { clientes: [], categorias: [], itens: [], orcamentos: [], itensOrcamento: [] };
+const empty = { clientes: [], contatosClientes: [], telefonesClientes: [], enderecosClientes: [], categorias: [], itens: [], orcamentos: [], itensOrcamento: [] };
 
 async function startLocalServer(directory = null) {
   const dataDirectory = directory || await mkdtemp(join(tmpdir(), 'atlas-local-'));
@@ -47,19 +47,27 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
       categorias: [[null, 'Materiais']],
       itens: [[null, 'Materiais', 'Cimento', 'Saco', 42.9, '01/01/1900', 'Ativo']],
       orcamentos: [[null, 1, 'Cliente local', '01/01/1900', '31/12/2026', 0]],
-      itensOrcamento: [[null, 1, 'Cimento', 2, 42.9, 0]]
+      itensOrcamento: [[null, 1, 'Cimento', 2, 42.9, 0]],
+      novoClienteContato: { email: 'compras@cliente.test', pessoa: 'Ana Compradora', telefones: ['(11) 99999-0000', '(11) 3333-0000'] }
     };
     let response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: 0, payload }) });
     assert.equal(response.status, 200);
     const saved = await response.json();
     assert.equal(saved.payload.orcamentos[0][5], 85.8);
+    assert.deepEqual(saved.payload.contatosClientes[0], [1, 'compras@cliente.test', 'Ana Compradora']);
+    assert.equal(saved.payload.telefonesClientes.filter((row) => row[1] === 1).length, 2);
     assert.equal(saved.payload.orcamentos[0][3] === '01/01/1900', false);
     const revisedPayload = structuredClone(saved.payload);
+    revisedPayload.contatosClientes = [[1, 'compras@cliente.test', 'Ana Compradora']];
+    revisedPayload.telefonesClientes = [[null, 1, '(11) 99999-0000', true], [null, 1, '(11) 3333-0000', false]];
+    revisedPayload.enderecosClientes = [[null, 1, '01001-000', 'Praça da Sé', '1', '', 'Sé', 'São Paulo', 'SP', '', true]];
     revisedPayload.itens[0][4] = 1.11;
     revisedPayload.itensOrcamento[0][4] = 1.11;
     response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: saved.revision, payload: revisedPayload }) });
     const revised = await response.json();
     assert.equal(revised.payload.orcamentos[0][5], 2.22);
+    assert.equal(revised.payload.telefonesClientes.length, 2);
+    assert.equal(revised.payload.enderecosClientes[0][3], 'Praça da Sé');
     response = await local.request('/api/backup');
     const backup = await response.json();
     assert.equal(backup.schema_version, 1);
@@ -80,12 +88,25 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
     try {
       const persisted = await (await restarted.request('/api/load')).json();
       assert.equal(persisted.payload.orcamentos[0][5], 2.22);
+      assert.equal(persisted.payload.contatosClientes[0][1], 'compras@cliente.test');
       assert.equal(persisted.revision, 3);
     } finally { await stopLocalServer(restarted); }
   } finally {
     if (local.server.listening) await stopLocalServer(local);
     await rm(local.directory, { recursive: true, force: true });
   }
+});
+
+test('contato obrigatório do novo cliente é validado de forma atômica', async () => {
+  const local = await startLocalServer();
+  try {
+    const payload = { ...structuredClone(empty), clientes: [[null, 'Pessoa Física', '529.982.247-25', 'Cliente sem contato']], novoClienteContato: { email: 'invalido', pessoa: '', telefones: [''] } };
+    const response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: 0, payload }) });
+    assert.equal(response.status, 400);
+    const loaded = await (await local.request('/api/load')).json();
+    assert.deepEqual(loaded.payload, empty);
+    assert.equal(loaded.revision, 0);
+  } finally { await stopLocalServer(local); await rm(local.directory, { recursive: true, force: true }); }
 });
 
 test('backup automático local cria cópia na pasta configurada', async () => {

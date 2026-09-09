@@ -191,6 +191,26 @@ test('menu móvel abre com foco, navega e fecha por Escape e clique externo', as
   await expect(page.locator('aside')).toBeHidden();
 });
 
+test('contato do cliente salva múltiplos telefones e endereço principal', async ({ page }) => {
+  await backend(page);
+  await page.getByRole('button', { name: 'Contato do cliente de código 1', exact: true }).click();
+  await expect(page.locator('#contact-dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Editar', exact: true }).click();
+  await page.locator('#contact-form [name=email]').fill('compras@cliente.test');
+  await page.locator('#contact-form [name=pessoa]').fill('Ana Compradora');
+  await page.getByRole('button', { name: 'Adicionar telefone' }).click();
+  await page.locator('#contact-phones input[type=tel]').fill('(11) 99999-0000');
+  await page.getByRole('button', { name: 'Adicionar telefone' }).click();
+  await page.locator('#contact-phones input[type=tel]').nth(1).fill('(11) 3333-0000');
+  await page.getByRole('button', { name: 'Adicionar endereço' }).click();
+  await page.locator('#contact-addresses [name=cep]').fill('01001-000');
+  await page.locator('#contact-addresses [name=logradouro]').fill('Praça da Sé');
+  await page.locator('#contact-addresses [name=cidade]').fill('São Paulo');
+  await page.locator('#contact-addresses [name=uf]').fill('SP');
+  await page.locator('#contact-form').getByRole('button', { name: 'Salvar' }).click();
+  await expect(page.locator('#contact-dialog')).toBeHidden();
+});
+
 test('novo orçamento grava itens e totais; exclusão autorizada remove ambos', async ({ page }) => {
   const api = await backend(page);
   page.on('dialog', (dialog) => dialog.accept());
@@ -230,9 +250,12 @@ test('usuário novo cadastra cliente validado, recarrega e sai sem manter dados 
   await expect(page.locator('#overlay')).toBeVisible();
   expect(api.saved()).toBeNull();
   await page.locator('#form [name=documento]').fill('52998224725');
+  await page.locator('#form [name=email]').fill('cliente@teste.com');
+  await page.locator('#new-client-phones input[type=tel]').fill('(11) 99999-0000');
   await page.getByRole('button', { name: 'SALVAR', exact: true }).click();
   await expect(page.locator('#overlay')).toBeHidden();
   expect(api.saved().clientes[0]).toEqual([500, 'Pessoa Física', '529.982.247-25', 'Cliente novo']);
+  expect(api.saved().contatosClientes[0]).toEqual([500, 'cliente@teste.com', '']);
   await expect(page.getByRole('button', { name: 'Editar cliente de código 500', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.locator('#tbody')).toContainText('Cliente novo');

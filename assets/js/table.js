@@ -39,7 +39,8 @@ export function formatCurrency(value) {
 }
 
 export function createRow(row, index, currentPage, canDelete = false, approvedOnly = false, isApproved = false) {
-  const cells = row
+  const visibleColumns = { clientes: 4, categorias: 2, itens: 7, orcamentos: 6, itensOrcamento: 6 }[currentPage] ?? row.length;
+  const cells = row.slice(0, visibleColumns)
     .map((value, column) => {
       const isItem = currentPage === 'itens';
       const isBudgetItem = currentPage === 'itensOrcamento';
@@ -87,6 +88,7 @@ export function createRow(row, index, currentPage, canDelete = false, approvedOn
       ${cells}
       ${budgetStatus}
       <td>
+        ${currentPage === 'clientes' ? `<button type="button" class="action" aria-label="Contato do ${reference}" title="Contato" data-action="contact" data-index="${index}"><span aria-hidden="true">☎</span></button>` : ''}
         ${currentPage === 'orcamentos' ? `<button type="button" class="action" aria-label="Imprimir ${reference}" title="Imprimir / Salvar PDF" data-action="print" data-index="${index}"><span aria-hidden="true">⎙</span></button>` : ''}
         <button type="button" class="action" aria-label="Editar ${reference}" title="Editar ${reference}" data-action="edit" data-index="${index}"><span aria-hidden="true">✎</span></button>
         ${canDelete ? `<button type="button" class="action" aria-label="Excluir ${reference}" title="Excluir ${reference}" data-action="delete" data-index="${index}"><span aria-hidden="true">⌫</span></button>` : ''}

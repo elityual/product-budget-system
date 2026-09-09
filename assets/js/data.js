@@ -1,5 +1,5 @@
 
-export const emptyData = () => ({ clientes: [], categorias: [], itens: [], orcamentos: [], itensOrcamento: [] });
+export const emptyData = () => ({ clientes: [], contatosClientes: [], telefonesClientes: [], enderecosClientes: [], categorias: [], itens: [], orcamentos: [], itensOrcamento: [], empresa: {} });
 export const data = emptyData();
 export const state = {
   currentPage: 'clientes',

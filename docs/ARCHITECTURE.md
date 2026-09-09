@@ -17,7 +17,7 @@ Nas Configurações, a linha dos três botões aparece antes do texto “Pasta d
 As Configurações agrupam Alterar pasta, Backup manual e Restaurar em `#storage-actions`, dentro de `#settings-local`; o cabeçalho não contém mais ações de backup. Os botões compartilham `.backup-controls`, com hover, foco, clique e estado desabilitado. O seletor exibe “Escolhendo pasta…” enquanto aguarda e só aplica o resultado ao rascunho que iniciou a seleção. Backup manual continua usando a pasta persistida; a restauração mantém seleção de arquivo e confirmação existentes.
 
 - `assets/js/data.js` mantém estado de navegação, permissões e coleções vazias; `assets/js/config.js` define páginas, campos e colunas.
-- `app.js`, `listing.js`, `records.js`, `budget-flow.js`, `relations.js`, `navigation.js`, `form.js`, `table.js`, `validation.js` e `budget.js` são controladores e regras da interface.
+- `app.js`, `listing.js`, `records.js`, `contacts.js`, `budget-flow.js`, `relations.js`, `navigation.js`, `form.js`, `table.js`, `validation.js` e `budget.js` são controladores e regras da interface. `contacts.js` mantém o rascunho do diálogo de contato e só troca as coleções em memória ao salvar.
 - `session.js` controla elementos HTML da sessão, o nome exibido da empresa no cabeçalho, confirmação de restauração, backup manual e a janela de Configurações. A janela mantém pasta e intervalo como rascunho até salvar; no SQLite usa as mesmas APIs da tela inicial e, no Supabase, informa que o backup local não se aplica. Downloads e atualizações do DOM não pertencem ao armazenamento.
 - `budget-print.js` cria a prévia de orçamento em uma nova janela e registra o clique de Imprimir / Salvar PDF no DOM dessa janela. Assim a impressão não depende de JavaScript embutido, que a política HTTP bloqueia.
 - `backend.js` é a fachada comum. Mantém revisão, permissões, aprovações e o contrato retornado aos controladores.
@@ -27,6 +27,8 @@ As Configurações agrupam Alterar pasta, Backup manual e Restaurar em `#storage
 O token Supabase fica em `sessionStorage`. A URL e a chave publishable ficam em `localStorage`; senhas não são persistidas. O token do SQLite existe somente em `sessionStorage` e muda a cada execução do servidor.
 
 ## Servidor local
+
+Compatibilidade Supabase: `202609090002_legacy_budget_user.sql` define o default `auth.uid()` em `orcamento.user_id` somente quando essa coluna legada existe. A RPC continua omitindo o campo; o banco registra o usuário autenticado em novas inserções. A migração preserva valores anteriores, restrições e RLS e não modifica o esquema novo sem essa coluna.
 
 O launcher passa `ATLAS_LAUNCHER_ID` ao processo filho e aceita apenas a mensagem `ATLAS_READY:<id>` recebida pelo stdout desse filho depois de escutar a porta. Ele drena stdout/stderr e recusa portas ocupadas. O servidor encerra também ao receber EOF no stdin quando iniciado pelo launcher. O fechamento da janela aguarda a saída do filho sem encerramento forçado por prazo.
 
@@ -48,9 +50,15 @@ O SQLite mantém valores monetários como centavos inteiros. O servidor recebe a
 
 ## Persistência e autorização
 
+A RPC `atlas_save_company` restringe seu UPDATE ao UUID fixo do workspace compartilhado criado pela instalação inicial (`00000000-0000-4000-8000-000000000001`). A migração de detalhes pode ser reaplicada para corrigir a ausência de WHERE sem remover dados ou desativar a proteção de gravação.
+
 As RPCs de gravação e aprovação atualizam a revisão com `WHERE revision=expected_revision`, após o bloqueio existente. A substituição transacional dos itens usa `WHERE orcamento_codigo IS NOT NULL` (coluna da chave primária), mantendo a abrangência anterior com condição explícita. A migração `202609080002_safe_workspace_writes.sql` usa `CREATE OR REPLACE FUNCTION` para atualizar instalações existentes sem recriar tabelas nem alterar ACLs. Os testes verificam dados, permissões, aplicação repetida, rollback e presença de WHERE; a proteção específica do Supabase exige confirmação remota.
 
-`supabase/migrations/202609080001_initial.sql` cria uma instalação vazia com tabelas relacionais, RLS, permissões e RPCs. Códigos são gerados pelo banco, vínculos usam chaves estrangeiras e totais são calculados no servidor. Escritas retornam `{ revision, payload, approved_codes }`; conflito de revisão retorna `null`.
+`supabase/migrations/202609080001_initial.sql` cria uma instalação vazia com tabelas relacionais, RLS, permissões e RPCs. A migração `202609090001_quotation_details.sql` acrescenta perfis e detalhes comerciais opcionais às instalações existentes. Códigos são gerados pelo banco, vínculos usam chaves estrangeiras e totais são calculados no servidor. Escritas retornam `{ revision, payload, approved_codes }`; conflito de revisão retorna `null`.
+
+Contatos usam as coleções `contatosClientes`, `telefonesClientes` e `enderecosClientes`. As tabelas `cliente_contato`, `cliente_telefone` e `cliente_endereco` possuem FK com exclusão em cascata; índices parciais impedem mais de um telefone ou endereço principal por cliente. A migração converte uma única vez os valores antigos de `cliente.detalhes`, mantendo endereços livres em `texto_legado`. Na criação, `novoClienteContato` é um campo transitório do payload: a API/RPC associa e-mail, pessoa de contato de PJ e telefones ao único cliente novo retornado pelo banco na mesma transação; a resposta carregada não o preserva. Edições de contato persistem somente as três coleções nomeadas.
+
+Antes de criar essas FKs, a migração de contatos verifica a chave candidata de `cliente.codigo`. Instalações legadas sem PK/UNIQUE recebem uma restrição única somente quando os códigos existentes são não nulos e não repetidos.
 
 No Supabase, usuários autenticados não anônimos leem e alteram o workspace compartilhado. Exclusões de clientes, categorias e produtos exigem administrador; orçamentos podem ser alterados pelos autenticados. No SQLite, o usuário do computador possui essas permissões. A confirmação por senha para exclusão é uma camada da interface do modo Supabase; a autoridade permanece no banco.
 
@@ -61,7 +69,7 @@ O SQLite cria backup diário ao iniciar e retém sete cópias. A restauração v
 1. A tela de sessão escolhe o armazenamento e carrega dados por `backend.js`.
 2. A fachada solicita o adaptador escolhido, atualiza revisão, permissões e aprovações e devolve o payload aos controladores.
 3. Os controladores alteram o estado em memória e chamam a persistência por callback de `app.js`.
-4. SQLite ou RPC Supabase validam e gravam o workspace de modo atômico. A resposta substitui o estado local; em falha, `app.js` restaura o snapshot visual.
+4. SQLite ou RPC Supabase validam e gravam o workspace de modo atômico. O orçamento preserva seus dados comerciais e descrições de produto já registrados; a resposta substitui o estado local; em falha, `app.js` restaura o snapshot visual.
 
 ## Testes, distribuição e convenções
 

@@ -25,6 +25,10 @@ export async function backend(page, initial = fixtures, isAdmin = true) {
       } });
     }
     if (path.endsWith('/atlas_load_workspace')) return route.fulfill({ json: payload ? [{ payload, revision, is_admin: isAdmin, approved_codes: approvedCodes }] : [] });
+    if (path.endsWith('/atlas_save_company')) {
+      const empresa = route.request().postDataJSON().profile;
+      return route.fulfill({ json: { empresa, revision } });
+    }
     if (path.endsWith('/atlas_approve_budget')) {
       const body = route.request().postDataJSON();
       if (fail) return route.fulfill({status:500,json:{}});
@@ -37,9 +41,19 @@ export async function backend(page, initial = fixtures, isAdmin = true) {
       const body = route.request().postDataJSON();
       if (body.expected_revision !== revision) return route.fulfill({ json: null });
       payload = body.new_payload;
-      payload.clientes = payload.clientes.map((client) =>
-        client[0] === null ? [nextClientCode++, ...client.slice(1)] : client
-      );
+      let generatedClientCode = null;
+      payload.clientes = payload.clientes.map((client) => {
+        if (client[0] !== null) return client;
+        generatedClientCode = nextClientCode++;
+        return [generatedClientCode, ...client.slice(1)];
+      });
+      if (payload.novoClienteContato && generatedClientCode !== null) {
+        const contact = payload.novoClienteContato;
+        payload.contatosClientes ||= []; payload.telefonesClientes ||= [];
+        payload.contatosClientes.push([generatedClientCode, contact.email, contact.pessoa || '']);
+        contact.telefones.forEach((telefone, index) => payload.telefonesClientes.push([null, generatedClientCode, telefone, index === 0]));
+        delete payload.novoClienteContato;
+      }
       payload.categorias = payload.categorias.map((row) => row[0] === null ? [nextCategoryCode++, ...row.slice(1)] : row);
       payload.itens = payload.itens.map((row) => row[0] === null ? [nextProductCode++, ...row.slice(1)] : row);
       let newBudgetCode;

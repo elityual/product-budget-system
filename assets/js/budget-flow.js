@@ -139,7 +139,7 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
   function selectedItems() {
     return createBudgetItemRecords({ budgetCode: null, products: data.itens, quantities: selectedQuantities }).map((item) => {
       const original = originalItems.find((row) => row[1] === item[1]);
-      return original ? [null, item[1], original[2], item[3], original[4], item[3] * original[4]] : item;
+      return original ? [null, item[1], original[2], item[3], original[4], item[3] * original[4], original[6] || ''] : item;
     });
   }
 
@@ -217,6 +217,12 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       <label class="budget-validity">Data de validade
         <input required name="validade" type="date">
       </label>
+      <section class="budget-terms"><h3>Condições comerciais</h3>
+        <label>Condições de pagamento<input name="pagamento" type="text"></label>
+        <label>Prazo de entrega<input name="entrega" type="text"></label>
+        <label>Local de entrega<input name="localEntrega" type="text"></label>
+        <label>Observações<textarea name="observacoes" rows="3"></textarea></label>
+      </section>
       <div class="budget-workspace">
       <section class="budget-catalog" aria-label="Produtos disponíveis">
       <h3>Produtos disponíveis</h3>
@@ -256,6 +262,8 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       select.value = selectedBudgetClientCode;
       select.onchange = () => { selectedBudgetClientCode = select.value; };
       get('#selected-budget-client').append(select);
+      const details = data.orcamentos[editingIndex][6] || {};
+      ['pagamento', 'entrega', 'localEntrega', 'observacoes'].forEach((name) => { form.elements[name].value = details[name] || ''; });
     }
     const categoryFilter = get('#budget-product-category');
     data.categorias.forEach((category) => {
@@ -320,7 +328,8 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
         clientCode: selectedClient[0],
         validity: form.elements.validade.value,
         total: calculateBudgetTotal(budgetItems),
-        existingRecord
+        existingRecord,
+        details: { ...Object.fromEntries(['pagamento', 'entrega', 'localEntrega', 'observacoes'].map((name) => [name, form.elements[name].value.trim()])), company: existingRecord?.[6]?.company || structuredClone(data.empresa || {}), client: existingRecord?.[1] === selectedClient[0] && existingRecord?.[6]?.client ? existingRecord[6].client : clientSnapshot(selectedClient) }
       });
       if (existingRecord) {
         data.orcamentos[editingIndex] = record;
@@ -336,6 +345,13 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       return;
     }
 
+  }
+  function clientSnapshot(client) {
+    const code = client[0];
+    const contact = data.contatosClientes.find((row) => row[0] === code) || [];
+    const phone = data.telefonesClientes.find((row) => row[1] === code && row[3]) || data.telefonesClientes.find((row) => row[1] === code);
+    const address = data.enderecosClientes.find((row) => row[1] === code && row[10]) || data.enderecosClientes.find((row) => row[1] === code);
+    return { email: contact[1] || '', contato: client[1] === 'Pessoa Jurídica' ? contact[2] || '' : '', telefone: phone?.[2] || '', endereco: address ? (address[9] || [address[3], address[4], address[5], address[6], address[7], address[8], address[2]].filter(Boolean).join(', ')) : '' };
   }
   return { openBudgetClientSelection, editBudget, submit };
 }

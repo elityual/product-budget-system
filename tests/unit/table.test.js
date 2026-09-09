@@ -88,6 +88,7 @@ test('escapa conteúdo de usuário ao renderizar células', () => {
   assert.doesNotMatch(row, /<img/);
   assert.doesNotMatch(row, /onerror="/);
   assert.match(row, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt; &amp; Empresa/);
+  assert.match(row, /data-action="contact"/);
 });
 
 test('escapa o texto exibido no status de produtos', () => {

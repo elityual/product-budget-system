@@ -54,7 +54,7 @@ test('cria orçamento com todas as colunas esperadas', () => {
     'Mariana Oliveira',
     '04/09/2026',
     '15/10/2026',
-    718
+    718, {}
   ]);
 });
 
@@ -65,7 +65,7 @@ test('preserva data e total ao editar um orçamento', () => {
     'Construtora Horizonte',
     '01/09/2026',
     '30/09/2026',
-    12480
+    12480, {}
   ];
 
   const record = createBudgetRecord({
@@ -82,7 +82,7 @@ test('preserva data e total ao editar um orçamento', () => {
     'Mariana Oliveira',
     '01/09/2026',
     '30/11/2026',
-    12480
+    12480, {}
   ]);
 });
 
@@ -98,8 +98,8 @@ test('cria itens selecionados e calcula o total do orçamento', () => {
   });
 
   assert.deepEqual(items, [
-    [103, 1, 'Cimento', 2, 42.9, 85.8],
-    [103, 2, 'Furadeira', 1, 359, 359]
+    [103, 1, 'Cimento', 2, 42.9, 85.8, 'Saco'],
+    [103, 2, 'Furadeira', 1, 359, 359, 'Elétrica']
   ]);
   assert.equal(calculateBudgetTotal(items), 444.8);
 });

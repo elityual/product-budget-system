@@ -25,7 +25,8 @@ export function money(value) {
 }
 
 export function validatePayload(db, payload, allowUnknownCodes = false) {
-  const sizes = { clientes: 4, categorias: 2, itens: 7, orcamentos: 6, itensOrcamento: 6 };
+  payload.contatosClientes ||= []; payload.telefonesClientes ||= []; payload.enderecosClientes ||= [];
+  const sizes = { clientes: 4, contatosClientes: 3, telefonesClientes: 4, enderecosClientes: 11, categorias: 2, itens: 7, orcamentos: 7, itensOrcamento: 7 };
   for (const [collection, size] of Object.entries(sizes)) {
     if (!Array.isArray(payload?.[collection])) throw new Error(`Coleção inválida: ${collection}.`);
     for (const row of payload[collection]) if (!Array.isArray(row) || row.length !== size) throw new Error(`Linha inválida em ${collection}.`);
@@ -37,6 +38,12 @@ export function validatePayload(db, payload, allowUnknownCodes = false) {
   for (const row of payload.clientes) if (!['Pessoa Física', 'Pessoa Jurídica'].includes(row[1]) || !String(row[2] ?? '').trim() || !String(row[3] ?? '').trim()) throw new Error('Cliente inválido.');
   const documents = payload.clientes.map((row) => String(row[2]).replace(/[^a-z0-9]/gi, '').toLocaleUpperCase('pt-BR'));
   if (new Set(documents).size !== documents.length) throw new Error('Documento de cliente repetido.');
+  const clientCodes = new Set(payload.clientes.map((row) => Number(row[0])).filter(Boolean));
+  if (payload.clientes.filter((row) => row[0] == null).length > 1) throw new Error('Salve um cliente novo por vez.');
+  for (const row of payload.contatosClientes) if (!clientCodes.has(Number(row[0])) || (row[1] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row[1]))) throw new Error('Contato de cliente inválido.');
+  for (const row of payload.telefonesClientes) if (!clientCodes.has(Number(row[1])) || !String(row[2]).trim()) throw new Error('Telefone de cliente inválido.');
+  for (const row of payload.enderecosClientes) if (!clientCodes.has(Number(row[1])) || !row.slice(2,10).some((value) => String(value).trim()) || (row[2] && !/^\d{5}-?\d{3}$/.test(row[2])) || (row[8] && !/^[A-Za-z]{2}$/.test(row[8]))) throw new Error('Endereço de cliente inválido.');
+  for (const rows of [payload.telefonesClientes,payload.enderecosClientes]) for (const code of clientCodes) { const linked=rows.filter((row)=>Number(row[1])===code); if (linked.length && linked.filter((row)=>row.at(-1)===true).length!==1) throw new Error('Cada lista de contato deve possuir um principal.'); }
   for (const row of payload.categorias) if (!String(row[1] ?? '').trim()) throw new Error('Categoria inválida.');
   const categories = payload.categorias.map((row) => String(row[1]).trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR'));
   if (new Set(categories).size !== categories.length) throw new Error('Categoria repetida.');
@@ -54,6 +61,6 @@ export function validatePayload(db, payload, allowUnknownCodes = false) {
   if (payload.orcamentos.filter((row) => row[0] == null).length > 1) throw new Error('Salve um orçamento novo por vez.');
   for (const row of payload.itensOrcamento) {
     if ((row[0] != null && (!Number.isInteger(Number(row[0])) || Number(row[0]) <= 0)) || row[1] == null || !Number.isInteger(Number(row[1])) || Number(row[1]) <= 0 || !String(row[2] ?? '').trim() || !Number.isInteger(Number(row[3])) || Number(row[3]) <= 0) throw new Error('Item de orçamento inválido.');
-    money(row[4]);
+    money(row[4]); if (typeof row[6] !== 'string') throw new Error('Item de orçamento inválido.');
   }
 }

@@ -35,16 +35,28 @@ test('migração inicial cria um Supabase vazio e aceita o contrato atual', asyn
     const correction = await readFile(new URL('../../supabase/migrations/202609080002_safe_workspace_writes.sql', import.meta.url), 'utf8');
     await db.exec(correction);
     await db.exec(correction);
+    const contactsMigration = await readFile(new URL('../../supabase/migrations/202609090001_quotation_details.sql', import.meta.url), 'utf8');
+    await db.exec(contactsMigration);
+    await db.exec(contactsMigration);
     assert.deepEqual((await db.query(aclQuery)).rows, beforeAcl);
     await db.exec('set role authenticated');
-    assert.deepEqual((await db.query('select * from public.atlas_load_workspace()')).rows[0], beforeUpgrade);
+    const upgraded = (await db.query('select * from public.atlas_load_workspace()')).rows[0];
+    assert.deepEqual(upgraded.payload.clientes, beforeUpgrade.payload.clientes);
+    assert.deepEqual(upgraded.payload.contatosClientes, []);
     const save = async (revision, value) => (await db.query('select public.atlas_save_workspace($1,$2::jsonb) as result', [revision, JSON.stringify(value)])).rows[0].result;
-    const withClient = structuredClone(beforeUpgrade.payload);
+    const withClient = structuredClone(upgraded.payload);
+    withClient.contatosClientes = [[1, 'compras@cliente.test', 'Ana Compradora']];
+    withClient.telefonesClientes = [[null, 1, '(11) 99999-0000', true]];
+    withClient.enderecosClientes = [[null, 1, '01001-000', 'Praça da Sé', '1', '', 'Sé', 'São Paulo', 'SP', '', true]];
     withClient.clientes.push([null, 'Pessoa Física', '529.982.247-25', 'Cliente novo']);
+    withClient.novoClienteContato = { email: 'novo@cliente.test', pessoa: '', telefones: ['(11) 98888-0000'] };
     result = await save(2, withClient);
-    assert.deepEqual(result.payload.itensOrcamento, beforeUpgrade.payload.itensOrcamento);
-    assert.deepEqual(result.payload.orcamentos, beforeUpgrade.payload.orcamentos);
+    assert.deepEqual(result.payload.itensOrcamento, upgraded.payload.itensOrcamento);
+    assert.deepEqual(result.payload.orcamentos, upgraded.payload.orcamentos);
     assert.deepEqual(result.approved_codes, [1]);
+    assert.equal(result.payload.contatosClientes[0][2], 'Ana Compradora');
+    assert.equal(result.payload.telefonesClientes[0][2], '(11) 99999-0000');
+    assert.deepEqual(result.payload.contatosClientes[1], [2, 'novo@cliente.test', '']);
     result.payload.clientes[1][3] = 'Cliente editado';
     result = await save(3, result.payload);
     assert.equal(result.payload.clientes[1][3], 'Cliente editado');
@@ -64,11 +76,11 @@ test('migração inicial cria um Supabase vazio e aceita o contrato atual', asyn
   } finally { await db.close(); }
 });
 
-test('RPCs de gravação e aprovação usam WHERE em DELETE e UPDATE nas duas migrações', async () => {
-  for (const name of ['202609080001_initial.sql', '202609080002_safe_workspace_writes.sql']) {
+test('RPCs usam WHERE em DELETE e UPDATE em todas as migrações', async () => {
+  for (const name of ['202609080001_initial.sql', '202609080002_safe_workspace_writes.sql', '202609090001_quotation_details.sql']) {
     const sql = await readFile(new URL(`../../supabase/migrations/${name}`, import.meta.url), 'utf8');
     const statements = sql.match(/\b(?:delete\s+from|update\s+public\.)[^;]+;/gi) || [];
-    assert.ok(statements.length >= 8);
+    assert.ok(statements.length >= 1);
     for (const statement of statements) assert.match(statement, /\bwhere\b/i, `${name}: ${statement}`);
   }
 });

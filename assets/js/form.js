@@ -61,7 +61,8 @@ export function createField(
   }
 
   const numberStep = type === 'number' ? ' step="0.01" min="0.01"' : '';
-  return `<label>${label}<input required name="${name}" type="${type}"${numberStep}></label>`;
+  const optional = arguments[0][4] ? '' : ' required';
+  return `<label>${label}<input${optional} name="${name}" type="${type}"${numberStep}></label>`;
 }
 
 export function setupComboboxes(form) {

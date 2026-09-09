@@ -58,6 +58,7 @@ npm.cmd run test:e2e
 ## Funcionalidades
 
 - Navegação entre Clientes, Produtos e Orçamentos. Orçamentos oferece Listar, Orçamentos aprovados pelo cliente, Itens do orçamento e Novo orçamento, nessa ordem. O cabeçalho central mostra o nome configurado da empresa e a data local, preservando Atlas como marca fixa. Sair é um ícone acessível no rodapé da barra esquerda.
+- A inclusão de cliente agrupa dados cadastrais e contato obrigatório: e-mail válido e ao menos um telefone; Pessoa Jurídica também exige pessoa de contato. Cada cliente possui a ação Contato, com consulta inicial em modo leitura e edição de vários telefones e endereços estruturados. Telefones e endereços possuem exatamente um registro principal quando a lista não está vazia. Cadastros antigos incompletos continuam consultáveis, mas precisam ser completados ao salvar seus contatos.
 - Menu móvel para telas de até 760 px, com botão, foco, Escape e fechamento ao navegar ou clicar fora.
 - Pesquisa compartilhada, filtros de tipo, categoria e status, tabelas de até 10 registros e paginação. Categoria aplica o filtro imediatamente.
 - Inclusão limpa filtros pelo botão principal e pelos submenus; cancelar mantém filtros limpos. Edição preserva filtros. Salvar inclusão revela o registro na última página.
@@ -106,6 +107,8 @@ npm.cmd run test:e2e
 | `tests/unit/`, `tests/integration/`, `tests/fixtures/` | Testes unitários, integração SQLite/Supabase e dados de teste |
 | `e2e/app.spec.js`, `playwright.config.js` | Testes de navegador e servidor de teste |
 | `supabase/migrations/202609080001_initial.sql` | Instalação Supabase do zero: tabelas, RLS, permissões, aprovação e RPCs |
+| `supabase/migrations/202609090001_quotation_details.sql` | Atualização para perfil da empresa, contatos relacionados e detalhes históricos do orçamento |
+| `supabase/migrations/202609090002_legacy_budget_user.sql` | Corrige criação de orçamento em bancos legados com `user_id` obrigatório; execute após a migração de detalhes |
 | `supabase/seeds/example_data.sql` | Carga opcional de demonstração, protegida contra bancos já preenchidos |
 | `tests/integration/initial-supabase.test.js` | Teste da instalação Supabase em banco vazio |
 | `package.json`, `package-lock.json`, `.gitignore` | Comandos, dependências fixadas e exclusões de artefatos |
@@ -158,6 +161,12 @@ A migração inicial `supabase/migrations/202609080001_initial.sql` cria diretam
 O SQL inicial permite a todos os autenticados editar e excluir orçamentos e itens; somente administradores podem excluir clientes, categorias e produtos. A exclusão de orçamento mantém confirmação na interface, e um orçamento mantido exige ao menos um item.
 
 ## Impressão e PDF de orçamento
+
+Se salvar a empresa retornar `UPDATE requires a WHERE clause`, execute novamente o arquivo completo `supabase/migrations/202609090001_quotation_details.sql` no SQL Editor. A versão corrigida restringe a atualização ao workspace compartilhado e preserva dados e permissões.
+
+O PDF também mostra, quando cadastrados, CNPJ, endereço, telefone e e-mail da empresa; contato e endereço do cliente; descrição histórica do produto; condições de pagamento, entrega e observações. Esses campos são opcionais e os documentos antigos continuam imprimíveis.
+
+Os dados do cliente mostrados no PDF usam o telefone e o endereço principais. Novos orçamentos guardam uma cópia desses dados; mudanças posteriores no cadastro não alteram o documento histórico.
 
 Implementado: o botão Imprimir em cada orçamento salvo abre uma prévia em nova janela para usuários autenticados e para o usuário local. O documento contém o nome configurado da empresa, cliente e CPF/CNPJ atual, código, emissão, validade, itens históricos, quantidades, preços, subtotais e total. Imprimir / Salvar PDF abre o diálogo nativo; selecione Salvar como PDF para exportar. Os controles não aparecem no documento impresso. Cabeçalhos/rodapés automáticos são configurados no navegador.
 

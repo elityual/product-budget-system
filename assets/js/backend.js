@@ -9,12 +9,14 @@ let revision = 0;
 let companyName = '';
 
 function applyWorkspace(result, payload) {
-  if (!Number.isSafeInteger(result?.revision) || !Object.keys(emptyData()).every((key) => Array.isArray(result.payload?.[key]))) throw new Error('Resposta de armazenamento inválida. Confira a configuração.');
+  if (!Number.isSafeInteger(result?.revision) || ['clientes', 'categorias', 'itens', 'orcamentos', 'itensOrcamento'].some((key) => !Array.isArray(result.payload?.[key]))) throw new Error('Resposta de armazenamento inválida. Confira a configuração.');
   revision = result.revision;
-  companyName = result.empresa || companyName;
+  const company = result.empresa || result.payload?.empresa || {};
+  companyName = company?.nome || company || companyName;
+  if (payload) payload.empresa = company;
   approvedBudgets.clear();
   (result.approved_codes || []).forEach((code) => approvedBudgets.add(code));
-  if (payload) Object.assign(payload, result.payload);
+  if (payload) { delete payload.novoClienteContato; Object.assign(payload, result.payload, { empresa: company }); }
   return result;
 }
 
@@ -76,11 +78,15 @@ export async function approveBudget(code, payload) {
   applyWorkspace(result, payload);
 }
 
-export async function saveCompanyName(name) {
-  const empresa = String(name || '').trim() || 'Atlas Máquinas & Obras';
-  if (empresa.length > 160) throw new Error('Nome da empresa inválido.');
+export async function saveCompanyName(profile) {
+  const empresa = typeof profile === 'string' ? { nome: profile } : profile;
+  empresa.nome = String(empresa?.nome || '').trim() || 'Atlas Máquinas & Obras';
+  if (empresa.nome.length > 160) throw new Error('Nome da empresa inválido.');
   if (storageMode() === 'local') return localRequest('/company', { method: 'POST', body: JSON.stringify({ empresa }) });
-  return { empresa };
+  const result = await supabaseRequest('/rest/v1/rpc/atlas_save_company', session, { method: 'POST', body: JSON.stringify({ profile: empresa }) });
+  if (Number.isSafeInteger(result.revision)) revision = result.revision;
+  companyName = result.empresa?.nome || empresa.nome;
+  return result;
 }
 
 export async function createManualBackup() {

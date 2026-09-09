@@ -8,11 +8,16 @@ export async function openDatabase(config) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS atlas_meta (chave TEXT PRIMARY KEY, valor TEXT NOT NULL);
     INSERT INTO atlas_meta(chave, valor) VALUES ('revision', '0') ON CONFLICT(chave) DO NOTHING;
-    INSERT INTO atlas_meta(chave, valor) VALUES ('empresa', 'Atlas Máquinas & Obras') ON CONFLICT(chave) DO NOTHING;
+    INSERT INTO atlas_meta(chave, valor) VALUES ('empresa', '{"nome":"Atlas Máquinas & Obras"}') ON CONFLICT(chave) DO NOTHING;
     CREATE TABLE IF NOT EXISTS cliente (
       codigo INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT NOT NULL, documento TEXT NOT NULL CHECK(trim(documento) <> ''), nome TEXT NOT NULL CHECK(trim(nome) <> '')
     );
     CREATE UNIQUE INDEX IF NOT EXISTS cliente_documento_unico ON cliente(upper(replace(replace(replace(replace(replace(replace(documento,'.',''),'-',''),'/',''),'(',''),')',''),' ','')));
+    CREATE TABLE IF NOT EXISTS cliente_contato (cliente_codigo INTEGER PRIMARY KEY REFERENCES cliente(codigo) ON DELETE CASCADE, email TEXT NOT NULL DEFAULT '', pessoa_contato TEXT NOT NULL DEFAULT '');
+    CREATE TABLE IF NOT EXISTS cliente_telefone (codigo INTEGER PRIMARY KEY AUTOINCREMENT, cliente_codigo INTEGER NOT NULL REFERENCES cliente(codigo) ON DELETE CASCADE, telefone TEXT NOT NULL CHECK(trim(telefone)<>''), principal INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS cliente_endereco (codigo INTEGER PRIMARY KEY AUTOINCREMENT, cliente_codigo INTEGER NOT NULL REFERENCES cliente(codigo) ON DELETE CASCADE, cep TEXT NOT NULL DEFAULT '', logradouro TEXT NOT NULL DEFAULT '', numero TEXT NOT NULL DEFAULT '', complemento TEXT NOT NULL DEFAULT '', bairro TEXT NOT NULL DEFAULT '', cidade TEXT NOT NULL DEFAULT '', uf TEXT NOT NULL DEFAULT '', texto_legado TEXT NOT NULL DEFAULT '', principal INTEGER NOT NULL DEFAULT 0);
+    CREATE UNIQUE INDEX IF NOT EXISTS cliente_telefone_principal_unico ON cliente_telefone(cliente_codigo) WHERE principal=1;
+    CREATE UNIQUE INDEX IF NOT EXISTS cliente_endereco_principal_unico ON cliente_endereco(cliente_codigo) WHERE principal=1;
     CREATE TABLE IF NOT EXISTS categoria (codigo INTEGER PRIMARY KEY AUTOINCREMENT, descricao TEXT NOT NULL);
     CREATE UNIQUE INDEX IF NOT EXISTS categoria_descricao_unica ON categoria(lower(trim(descricao)));
     CREATE TABLE IF NOT EXISTS produto (
@@ -32,6 +37,17 @@ export async function openDatabase(config) {
       PRIMARY KEY (orcamento_codigo, produto_codigo)
     );
   `);
+  for (const statement of [
+    "ALTER TABLE cliente ADD COLUMN detalhes TEXT NOT NULL DEFAULT '{}'",
+    "ALTER TABLE orcamento ADD COLUMN detalhes TEXT NOT NULL DEFAULT '{}'",
+    "ALTER TABLE item_orcamento ADD COLUMN produto_descricao TEXT NOT NULL DEFAULT ''"
+  ]) { try { db.exec(statement); } catch (error) { if (!/duplicate column/i.test(error.message)) throw error; } }
+  const legacy = db.prepare("SELECT codigo,detalhes FROM cliente WHERE detalhes<>'{}'").all();
+  for (const row of legacy) { let value; try { value = JSON.parse(row.detalhes); } catch { continue; }
+    db.prepare('INSERT OR IGNORE INTO cliente_contato(cliente_codigo,email,pessoa_contato) VALUES(?,?,?)').run(row.codigo, value.email || '', value.contato || '');
+    if (value.telefone) db.prepare('INSERT INTO cliente_telefone(cliente_codigo,telefone,principal) SELECT ?,?,1 WHERE NOT EXISTS(SELECT 1 FROM cliente_telefone WHERE cliente_codigo=?)').run(row.codigo, value.telefone, row.codigo);
+    if (value.endereco) db.prepare("INSERT INTO cliente_endereco(cliente_codigo,texto_legado,principal) SELECT ?,?,1 WHERE NOT EXISTS(SELECT 1 FROM cliente_endereco WHERE cliente_codigo=?)").run(row.codigo, value.endereco, row.codigo);
+  }
   return db;
 }
 

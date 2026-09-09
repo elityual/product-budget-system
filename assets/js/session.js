@@ -8,6 +8,7 @@ export function setupSession({ render, resetFilters, closeModal }) {
   const localHelp = get('#local-help');
   const companySetting = get('#company-setting');
   const companyName = get('#company-name');
+  const companyFields = { nome: companyName, cnpj: get('#company-cnpj'), endereco: get('#company-address'), telefone: get('#company-phone'), email: get('#company-email') };
   const email = get('#auth-form [name=email]');
   const password = get('#auth-form [name=password]');
   const button = get('#auth-form button');
@@ -30,11 +31,12 @@ export function setupSession({ render, resetFilters, closeModal }) {
   let settingsDraft = null;
   const displayBackupDirectory = () => { backupDirectory.textContent = selectedBackupDirectory || 'Nenhuma pasta selecionada.'; };
   const applyCompanyName = (empresa) => {
-    const value = empresa || 'Atlas Máquinas & Obras';
+    const profile = typeof empresa === 'string' ? { nome: empresa } : empresa || {};
+    const value = profile.nome || 'Atlas Máquinas & Obras';
     localStorage.setItem('atlas.company.name', value);
     get('#brand-name').textContent = 'Atlas';
     get('#header-company-name').textContent = value;
-    companyName.value = value;
+    Object.entries(companyFields).forEach(([name, field]) => { field.value = profile[name] || (name === 'nome' ? value : ''); const key = name === 'nome' ? 'name' : name === 'endereco' ? 'address' : name === 'telefone' ? 'phone' : name; const settingsField = get(`#settings-company-${key}`); if (settingsField) settingsField.value = field.value; });
   };
   const backupMessage = (settings) => settings.lastError || (settings.lastBackupAt ? `Último backup automático: ${new Date(settings.lastBackupAt).toLocaleString('pt-BR')}` : 'Escolha uma pasta para ativar os backups automáticos.');
   const showBackupSettings = async () => {
@@ -103,7 +105,7 @@ export function setupSession({ render, resetFilters, closeModal }) {
     const local = storageMode() === 'local';
     settingsLocal.classList.toggle('hidden', !local);
     settingsSupabase.classList.toggle('hidden', local);
-    settingsSave.classList.toggle('hidden', !local);
+    settingsSave.classList.remove('hidden');
     settingsDialog.showModal();
     if (!local) return;
     try { fillSettingsDraft(await loadBackupSettings()); }
@@ -127,10 +129,12 @@ export function setupSession({ render, resetFilters, closeModal }) {
   };
   settingsInterval.onchange = () => { if (settingsDraft) settingsDraft.intervalMinutes = Number(settingsInterval.value); };
   settingsSave.onclick = async () => {
-    if (!settingsDraft) return;
     settingsSave.disabled = true;
     settingsError.textContent = '';
     try {
+      const profile = Object.fromEntries(['nome', 'cnpj', 'endereco', 'telefone', 'email'].map((name) => { const key = name === 'nome' ? 'name' : name === 'endereco' ? 'address' : name === 'telefone' ? 'phone' : name; return [name, get(`#settings-company-${key}`).value.trim()]; }));
+      applyCompanyName((await saveCompanyName(profile)).empresa);
+      if (storageMode() !== 'local') { closeSettings(); return; }
       const settings = await saveBackupSettings({ directory: settingsDraft.directory, intervalMinutes: Number(settingsInterval.value) });
       backupSettingsVersion++;
       selectedBackupDirectory = settings.directory || '';
@@ -190,7 +194,7 @@ export function setupSession({ render, resetFilters, closeModal }) {
       configureStorage(modeField.value, { url: get('#supabase-url').value, key: get('#supabase-key').value });
       if (local) await persistBackupSettings();
       await signIn(local ? '' : form.elements.email.value, local ? '' : form.elements.password.value);
-      applyCompanyName((await saveCompanyName(companyName.value)).empresa);
+      applyCompanyName((await saveCompanyName(Object.fromEntries(Object.entries(companyFields).map(([name, field]) => [name, field.value.trim()])))).empresa);
       await startSession();
     } catch (error) {
       get('#auth-error').textContent = error.message;

@@ -39,6 +39,10 @@ Testes locais demonstram o comportamento do código e do SQL em ambiente isolado
 | CLI-005 | Consulta | A lista permite pesquisar todas as colunas e filtrar pelo tipo de cliente. | Implementado |
 | CLI-006 | Edição | A linha pode ser carregada e alterada após confirmação; o código permanece igual. | Implementado |
 | CLI-007 | Exclusão | A exclusão pede confirmação; cliente vinculado a orçamento não pode ser removido. | Implementado |
+| CLI-008 | Contatos relacionados | A ação Contato permite um e-mail, pessoa de contato apenas para PJ, vários telefones e vários endereços; listas não vazias possuem exatamente um principal. A consulta inicia em modo leitura e a edição exige e-mail válido e ao menos um telefone; PJ exige também pessoa de contato. | Implementado |
+| CLI-011 | Inclusão com contato obrigatório | Novo cliente exige e-mail válido e pelo menos um telefone principal; Pessoa Jurídica exige pessoa de contato. Os registros são salvos juntos em uma transação. Clientes antigos incompletos permanecem utilizáveis até uma edição de seus contatos. | Implementado |
+| CLI-009 | Endereço | Endereços usam CEP, logradouro, número, complemento, bairro, cidade e UF; CEP e UF preenchidos são validados. | Implementado |
+| CLI-010 | Histórico no orçamento | O orçamento salva o e-mail, pessoa de contato de PJ, telefone principal e endereço principal usados no PDF. | Implementado |
 
 Não há consulta externa de situação cadastral de CPF/CNPJ.
 
@@ -79,7 +83,7 @@ Não há consulta externa de situação cadastral de CPF/CNPJ.
 | ORC-010 | Aprovação | Orçamentos pendentes podem ser aprovados pelo botão do cabeçalho, após seleção e confirmação explícita de que será registrado o aceite do cliente. A aprovação é persistida, não significa pagamento e aparece como “Aprovado pelo cliente” na listagem geral. | Implementado |
 | ORC-011 | Aprovados | A lista “Orçamentos aprovados pelo cliente” exibe somente registros aprovados, permite pesquisa e paginação e oferece apenas a ação de PDF. A listagem geral mostra “Pendente” ou “Aprovado pelo cliente” antes das ações. | Implementado |
 | ORC-012 | Edição de aprovados | Editar um orçamento aprovado mantém sua aprovação. Estados Enviado e Cancelado, reversão e bloqueio de edição não fazem parte do comportamento atual. | Implementado |
-| ORC-013 | Impressão | A prévia contém empresa, cliente, documento atual, código, emissão, validade, itens históricos, subtotais e total; controles de interface ficam ocultos na impressão. | Implementado |
+| ORC-013 | Impressão | A prévia contém empresa, cliente, documento atual, código, emissão, validade, itens históricos, subtotais, total e, quando preenchidos, contatos e condições comerciais; controles de interface ficam ocultos na impressão. | Implementado |
 | ORC-014 | PDF | O botão da prévia abre o diálogo nativo do navegador para imprimir ou salvar como PDF, por evento JavaScript compatível com a política de segurança. | Implementado |
 
 O rascunho é mantido no navegador até a confirmação de salvamento. Cancelar a confirmação não grava alterações.
@@ -131,7 +135,11 @@ O rascunho é mantido no navegador até a confirmação de salvamento. Cancelar 
 
 O roteiro para validar uma instalação Supabase real está em [SUPABASE.md](SUPABASE.md). O teste PGlite da instalação inicial é local e não substitui esse roteiro.
 
+Correção da gravação do perfil da empresa no Supabase: `atlas_save_company` usa WHERE com o UUID do workspace compartilhado. Reaplicar `202609090001_quotation_details.sql` atualiza a função existente; a validação da proteção específica no projeto remoto permanece manual.
+
 ## Regras comuns da interface
+
+Compatibilidade implementada para criação de orçamentos em Supabase legado: a migração `202609090002_legacy_budget_user.sql` preenche a coluna obrigatória `orcamento.user_id` com o usuário autenticado por padrão, preservando os autores existentes e as restrições. Não altera permissões nem o controle de revisão. Verificação remota depende da aplicação da migração no projeto.
 
 Correção implementada de ARM-003 para Supabase: gravação e aprovação usam condições explícitas em DELETE/UPDATE, mantendo substituição atômica dos itens e controle de revisão. A migração corretiva `202609080002_safe_workspace_writes.sql` preserva dados, aprovações e permissões em instalações existentes. Validado localmente com PGlite e inspeção dos comandos; aceitação no projeto remoto com proteção de gravação permanece pendente.
 
