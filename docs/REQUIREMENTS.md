@@ -139,7 +139,14 @@ Correção da gravação do perfil da empresa no Supabase: `atlas_save_company` 
 
 ## Regras comuns da interface
 
-Compatibilidade implementada para criação de orçamentos em Supabase legado: a migração `202609090002_legacy_budget_user.sql` preenche a coluna obrigatória `orcamento.user_id` com o usuário autenticado por padrão, preservando os autores existentes e as restrições. Não altera permissões nem o controle de revisão. Verificação remota depende da aplicação da migração no projeto.
+Compatibilidade implementada para ISS-001 em Supabase legado: após a auditoria somente de leitura, `202609090004_migrate_legacy_composite_commercial_keys.sql` converte chaves e FKs compostas `(user_id,codigo)` em chaves comerciais por código e arquiva os valores antigos. A migração mantém IDs, vínculos, contatos, snapshots, aprovações, permissões e revisão. Dependências não mapeadas interrompem a transação sem alteração; `atlas_admins.user_id`, `atlas_workspaces.user_id` e Auth são preservados. Verificação remota depende da aplicação da migração no projeto.
+
+Instalações com tabelas atuais e RPC antiga recebem o contrato de CLI-011 por `202609090005_refresh_workspace_contact_rpcs.sql`. A atualização é transacional, reaplicável e restrita às RPCs de workspace; uma rejeição de contato obrigatório desfaz também a inclusão do cliente. Contatos que uma RPC anterior ignorou não são reconstruíveis automaticamente.
+
+O modelo persistente final não usa colunas `detalhes` em cliente ou orçamento. `202609090006_normalize_details.sql` transfere os valores para as tabelas relacionadas, e `orcamento_informacao` preserva termos e snapshots em colunas explícitas. O payload continua expondo sete posições no orçamento para compatibilidade com a interface, restauração e impressão.
+
+| EMP-001 | Perfil obrigatório | A tela de entrada não exibe dados da empresa. Depois de entrar, nome, CNPJ válido, endereço, telefone e e-mail válido são exigidos em diálogo bloqueante somente enquanto o perfil estiver incompleto. | Implementado |
+| EMP-002 | Persistência do perfil | SQLite e Supabase mantêm o perfil em `empresa_perfil`; o objeto externo `empresa` permanece compatível com cabeçalho, PDF e backup. | Implementado |
 
 Correção implementada de ARM-003 para Supabase: gravação e aprovação usam condições explícitas em DELETE/UPDATE, mantendo substituição atômica dos itens e controle de revisão. A migração corretiva `202609080002_safe_workspace_writes.sql` preserva dados, aprovações e permissões em instalações existentes. Validado localmente com PGlite e inspeção dos comandos; aceitação no projeto remoto com proteção de gravação permanece pendente.
 

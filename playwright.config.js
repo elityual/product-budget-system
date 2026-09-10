@@ -15,6 +15,6 @@ export default defineConfig({
     command: 'node server.js',
     url: baseURL,
     reuseExistingServer: false,
-    env: { ATLAS_DATA_DIR: '.test-data', PORT: String(port) }
+    env: { ATLAS_DATA_DIR: process.env.PLAYWRIGHT_DATA_DIR || '.test-data', PORT: String(port) }
   }
 });

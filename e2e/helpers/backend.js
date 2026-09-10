@@ -26,8 +26,9 @@ export async function backend(page, initial = fixtures, isAdmin = true) {
     }
     if (path.endsWith('/atlas_load_workspace')) return route.fulfill({ json: payload ? [{ payload, revision, is_admin: isAdmin, approved_codes: approvedCodes }] : [] });
     if (path.endsWith('/atlas_save_company')) {
-      const empresa = route.request().postDataJSON().profile;
-      return route.fulfill({ json: { empresa, revision } });
+      const empresa = { ...route.request().postDataJSON().profile, completo: true };
+      if (payload) payload.empresa = empresa;
+      return route.fulfill({ json: { empresa, revision: ++revision } });
     }
     if (path.endsWith('/atlas_approve_budget')) {
       const body = route.request().postDataJSON();

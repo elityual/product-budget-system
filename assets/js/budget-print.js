@@ -3,7 +3,10 @@ import { formatCurrency } from './table.js';
 
 export function createBudgetDocument(budget, client, items, company = {}, approved = false) {
   company = budget[6]?.company || company;
-  client = client ? [...client.slice(0, 4), budget[6]?.client || client[4] || {}] : client;
+  if (client) {
+    const snapshot = budget[6]?.client || client[4] || {};
+    client = [client[0], snapshot.tipo || client[1], snapshot.documento || client[2], snapshot.nome || client[3], snapshot];
+  }
   const escape = escapeHtml;
   const companyName = company.nome || 'Atlas Máquinas & Obras';
   const rows = items.filter((item) => item[0] === budget[0]).map((item) => `

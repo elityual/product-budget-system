@@ -5,7 +5,7 @@ O Supabase é opcional. Escolha “Banco local neste computador” para usar SQL
 ## Criar o projeto
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo.
-2. Abra o SQL Editor e execute, nesta ordem, os arquivos inteiros [`supabase/migrations/202609080001_initial.sql`](../supabase/migrations/202609080001_initial.sql) e [`supabase/migrations/202609090001_quotation_details.sql`](../supabase/migrations/202609090001_quotation_details.sql). Eles criam as tabelas vazias, contatos relacionados, regras de segurança e RPCs atuais.
+2. Abra o SQL Editor e execute, nesta ordem, os arquivos inteiros `202609080001_initial.sql`, `202609090001_quotation_details.sql`, `202609090005_refresh_workspace_contact_rpcs.sql`, `202609090006_normalize_details.sql` e `202609090007_company_profile.sql`. Eles criam as tabelas vazias, contatos relacionados, informações normalizadas, perfil da empresa, regras de segurança e RPCs atuais. As migrações `090002` a `090004` são corretivas para bancos legados e não são necessárias em um projeto vazio.
 3. Em Authentication > Users, crie um usuário confirmado com e-mail e senha.
 4. No SQL Editor, defina esse usuário como administrador, substituindo o e-mail:
 
@@ -39,15 +39,17 @@ Os testes locais em `tests/integration/initial-supabase.test.js` simulam Auth e 
 
 ## Permissões e dados
 
-As tabelas `cliente`, `categoria`, `produto`, `orcamento` e `item_orcamento` são relacionais. Códigos são gerados pelo PostgreSQL; datas de emissão e nomes/preços dos itens existentes são preservados; totais são calculados no servidor. A interface envia orçamentos somente na ordem `[codigo, clienteCodigo, clienteNome, data, validade, total]`.
+As tabelas comerciais e `orcamento_informacao` são relacionais. Códigos são gerados pelo PostgreSQL; datas de emissão, nomes e preços históricos são preservados; totais são calculados no servidor. A interface envia orçamentos na ordem `[codigo, clienteCodigo, clienteNome, data, validade, total, informacao]`.
 
 RLS permite leitura apenas a sessões autenticadas não anônimas. Escritas diretas são revogadas; alterações passam pelas RPCs, que validam o formato, a revisão, as permissões, os vínculos e a atomicidade. A tabela `atlas_admins` só deve ser administrada pelo SQL Editor com acesso de projeto.
 
 ## Problemas comuns
 
-### Orçamento rejeitado por user_id nulo (23502)
+### Inclusões rejeitadas por user_id nulo (23502)
 
-Se criar orçamento retornar `null value in column "user_id" of relation "orcamento"`, execute o arquivo completo [`202609090002_legacy_budget_user.sql`](../supabase/migrations/202609090002_legacy_budget_user.sql), após a migração de detalhes. Ele define `auth.uid()` como valor padrão da coluna legada, mantendo NOT NULL, chaves estrangeiras, dados existentes e políticas. É reaplicável e não altera instalações sem essa coluna. Recarregue o Atlas e tente salvar novamente. O projeto remoto precisa ser validado pelo operador; os testes locais verificam a compatibilidade em PostgreSQL isolado.
+Se uma inclusão retornar `null value in column "user_id"`, o projeto possui colunas comerciais de uma versão anterior. Depois de `202609090001_quotation_details.sql`, execute primeiro a consulta somente de leitura [`202609090003_legacy_user_id_audit.sql`](../supabase/audits/202609090003_legacy_user_id_audit.sql). Para o resultado com chaves primárias `(user_id, codigo)`, checks `shared_workspace_only` e FKs compostas entre cliente, categoria, produto, orçamento e itens, execute [`202609090004_migrate_legacy_composite_commercial_keys.sql`](../supabase/migrations/202609090004_migrate_legacy_composite_commercial_keys.sql). Ela cria `atlas_legacy_user_id_backup`, sem permissão para sessões da aplicação, arquiva os valores por chave e troca as chaves e FKs compostas pelo contrato atual baseado em código. Não usa `CASCADE`; dependências fora do esquema auditado fazem toda a transação falhar sem alterar o banco. A migração `202609090003_remove_legacy_commercial_user_id.sql` destina-se somente a instalações sem chaves compostas. Recarregue o Atlas e teste inclusão e edição. A validação no projeto remoto continua necessária.
+
+`202609090002_legacy_budget_user.sql` permanece como correção temporária para instalações que desejem manter apenas `orcamento.user_id`; não a aplique antes da remoção completa de ISS-001.
 
 ### Gravação bloqueada por DELETE ou UPDATE sem WHERE
 
@@ -56,6 +58,34 @@ Se o cadastro retornar `21000: DELETE requires a WHERE clause`, execute **soment
 A migração inicial já contém a correção para projetos novos. Depois de aplicar a correção em um projeto existente, recarregue o Atlas e cadastre um cliente; confira também os itens, totais e aprovação de um orçamento existente. A confirmação remota permanece pendente até essa verificação. O PGlite testa as transações e a preservação de dados, mas não reproduz a extensão de proteção do projeto Supabase.
 
 Para habilitar contatos, perfil completo da empresa e snapshots do PDF em uma instalação existente, execute depois a migração `202609090001_quotation_details.sql`. Ela é reaplicável, migra os campos antigos de contato sem duplicá-los e substitui as RPCs pelo contrato atual. Nesse contrato, a criação de cliente envia um rascunho transitório `novoClienteContato`: e-mail válido e telefone são obrigatórios, e Pessoa Jurídica exige pessoa de contato. A RPC grava o cliente e esses contatos na mesma transação; clientes antigos sem essas informações permanecem carregáveis até sua edição de contato.
+
+Se a consulta de diagnóstico da função indicar `suporta_contato_na_criacao = false`, execute [`202609090005_refresh_workspace_contact_rpcs.sql`](../supabase/migrations/202609090005_refresh_workspace_contact_rpcs.sql) depois de `202609090004_migrate_legacy_composite_commercial_keys.sql`. Essa migração substitui somente as RPCs de leitura e gravação, preservando registros, contatos, snapshots, aprovações, permissões e revisão. Ela é transacional e reaplicável; não repete a conversão de `cliente.detalhes`. Contatos enviados a uma RPC antiga e ignorados não existem no banco e precisam ser preenchidos pela ação **Contato**.
+
+Depois de aplicar, confirme o contrato com:
+
+```sql
+select position('novoClienteContato' in pg_get_functiondef(
+  'public.atlas_save_workspace(bigint,jsonb)'::regprocedure
+)) > 0 as suporta_contato_na_criacao;
+```
+
+O resultado deve ser `true`. Em seguida, crie um CPF com dois telefones e um CNPJ com pessoa de contato, recarregue a aplicação e confira os registros pela ação **Contato**.
+
+Por fim, execute [`202609090006_normalize_details.sql`](../supabase/migrations/202609090006_normalize_details.sql). A migração cria `orcamento_informacao`, copia termos e snapshots sem inventar valores ausentes, aproveita contatos legados apenas quando ainda não há registro relacionado, atualiza as RPCs e remove `cliente.detalhes` e `orcamento.detalhes`. Toda a operação ocorre em uma transação e pode ser reaplicada.
+
+Confirme a remoção com:
+
+```sql
+select table_name, column_name
+from information_schema.columns
+where table_schema = 'public'
+  and table_name in ('cliente', 'orcamento')
+  and column_name = 'detalhes';
+```
+
+O resultado deve ficar vazio. Orçamentos continuam retornando o objeto comercial na posição 7 do payload, agora montado a partir de `orcamento_informacao`.
+
+Execute depois [`202609090007_company_profile.sql`](../supabase/migrations/202609090007_company_profile.sql). Ela migra `atlas_workspaces.empresa` para `empresa_perfil`, reconhece perfis legados válidos, atualiza as RPCs e remove o JSON antigo. Ao próximo acesso, perfis parciais abrem o cadastro obrigatório; completos entram diretamente.
 
 Essa migração confirma que `cliente.codigo` é uma chave primária ou única antes de criar as chaves estrangeiras. Em instalações antigas sem essa restrição, ela adiciona `cliente_codigo_unico`; se houver código nulo ou repetido, interrompe a transação com uma mensagem específica para que os dados sejam corrigidos primeiro.
 

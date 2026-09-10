@@ -2,6 +2,7 @@ import { emptyData, permissions, approvedBudgets } from './data.js';
 import { configureStorage, storageMode, supabaseConfig } from './storage/config.js';
 import { clearLocalSession, localRequest } from './storage/local.js';
 import { clearSupabaseSession, readSupabaseSession, saveSupabaseSession, supabaseRequest } from './storage/supabase.js';
+import { validateCompanyProfile } from './company-profile.js';
 
 export { configureStorage, storageMode, supabaseConfig };
 let session;
@@ -13,6 +14,7 @@ function applyWorkspace(result, payload) {
   revision = result.revision;
   const company = result.empresa || result.payload?.empresa || {};
   companyName = company?.nome || company || companyName;
+  if (result.payload) result.payload.empresa = company;
   if (payload) payload.empresa = company;
   approvedBudgets.clear();
   (result.approved_codes || []).forEach((code) => approvedBudgets.add(code));
@@ -79,9 +81,9 @@ export async function approveBudget(code, payload) {
 }
 
 export async function saveCompanyName(profile) {
-  const empresa = typeof profile === 'string' ? { nome: profile } : profile;
-  empresa.nome = String(empresa?.nome || '').trim() || 'Atlas Máquinas & Obras';
-  if (empresa.nome.length > 160) throw new Error('Nome da empresa inválido.');
+  const validation = validateCompanyProfile(typeof profile === 'string' ? { nome: profile } : profile);
+  if (!validation.complete) throw new Error(Object.values(validation.errors)[0]);
+  const empresa = validation.value;
   if (storageMode() === 'local') return localRequest('/company', { method: 'POST', body: JSON.stringify({ empresa }) });
   const result = await supabaseRequest('/rest/v1/rpc/atlas_save_company', session, { method: 'POST', body: JSON.stringify({ profile: empresa }) });
   if (Number.isSafeInteger(result.revision)) revision = result.revision;

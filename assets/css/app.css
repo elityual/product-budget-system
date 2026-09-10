@@ -269,6 +269,18 @@ button:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; box-shad
 #settings-dialog label { display: grid; gap: 6px; margin: 14px 0 6px; color: #59636c; font-size: 12px; font-weight: bold; }
 #settings-dialog footer { display: flex; justify-content: flex-end; gap: 8px; padding: 18px 22px; }
 #settings-dialog .secondary { padding: 10px 14px; }
+
+#company-dialog { width: min(560px, 95vw); padding: 0; border: 1px solid var(--line); background: white; }
+#company-dialog::backdrop { background: #12191ecc; }
+#company-dialog header { padding: 18px 22px; background: #27323c; color: white; }
+#company-dialog h2 { margin: 0; font-size: 18px; }
+#company-dialog > p { margin: 0; padding: 18px 22px 0; color: #59636c; }
+#company-dialog form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 18px 22px 22px; }
+#company-dialog label { display: grid; gap: 6px; color: #59636c; font-size: 12px; font-weight: bold; }
+#company-dialog label:first-child, #company-dialog label:nth-child(4), #company-dialog #company-dialog-error, #company-dialog footer { grid-column: 1 / -1; }
+#company-dialog #company-dialog-error { min-height: 18px; margin: 0; color: var(--danger); }
+#company-dialog footer { display: flex; justify-content: flex-end; }
+@media (max-width: 560px) { #company-dialog form { grid-template-columns: 1fr; } #company-dialog label { grid-column: 1; } }
 #settings-error { color: #a32020; }
 #contact-dialog { width:min(820px, 95vw); max-height:90vh; border:1px solid var(--line); padding:0; overflow:hidden; background:#f7f8f9; }
 #contact-dialog::backdrop { background:#12191e99; }

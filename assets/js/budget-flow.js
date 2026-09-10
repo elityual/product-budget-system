@@ -329,7 +329,7 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
         validity: form.elements.validade.value,
         total: calculateBudgetTotal(budgetItems),
         existingRecord,
-        details: { ...Object.fromEntries(['pagamento', 'entrega', 'localEntrega', 'observacoes'].map((name) => [name, form.elements[name].value.trim()])), company: existingRecord?.[6]?.company || structuredClone(data.empresa || {}), client: existingRecord?.[1] === selectedClient[0] && existingRecord?.[6]?.client ? existingRecord[6].client : clientSnapshot(selectedClient) }
+        details: { ...Object.fromEntries(['pagamento', 'entrega', 'localEntrega', 'observacoes'].map((name) => [name, form.elements[name].value.trim()])), company: { ...structuredClone(data.empresa || {}), ...(existingRecord?.[6]?.company || {}) }, client: existingRecord?.[1] === selectedClient[0] && existingRecord?.[6]?.client ? { ...clientSnapshot(selectedClient), ...existingRecord[6].client } : clientSnapshot(selectedClient) }
       });
       if (existingRecord) {
         data.orcamentos[editingIndex] = record;
@@ -351,7 +351,7 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
     const contact = data.contatosClientes.find((row) => row[0] === code) || [];
     const phone = data.telefonesClientes.find((row) => row[1] === code && row[3]) || data.telefonesClientes.find((row) => row[1] === code);
     const address = data.enderecosClientes.find((row) => row[1] === code && row[10]) || data.enderecosClientes.find((row) => row[1] === code);
-    return { email: contact[1] || '', contato: client[1] === 'Pessoa Jurídica' ? contact[2] || '' : '', telefone: phone?.[2] || '', endereco: address ? (address[9] || [address[3], address[4], address[5], address[6], address[7], address[8], address[2]].filter(Boolean).join(', ')) : '' };
+    return { tipo: client[1], documento: client[2], nome: client[3], email: contact[1] || '', contato: client[1] === 'Pessoa Jurídica' ? contact[2] || '' : '', telefone: phone?.[2] || '', endereco: address ? (address[9] || [address[3], address[4], address[5], address[6], address[7], address[8], address[2]].filter(Boolean).join(', ')) : '' };
   }
   return { openBudgetClientSelection, editBudget, submit };
 }

@@ -60,9 +60,6 @@
       </div>
       <p id="backup-status" aria-live="polite"></p>
     </div>
-    <div id="company-setting"><label>Nome da empresa<input id="company-name" type="text" value="Atlas Máquinas & Obras" maxlength="160" autocomplete="organization"></label>
-      <label>CNPJ<input id="company-cnpj" type="text"></label><label>Endereço<input id="company-address" type="text"></label>
-      <label>Telefone<input id="company-phone" type="tel"></label><label>E-mail<input id="company-email" type="email"></label></div>
     <form id="auth-form">
       <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
       <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
@@ -253,6 +250,19 @@
     <p id="settings-supabase" class="hidden">As configurações de backup estão disponíveis somente no banco local.</p>
     <p id="settings-error" role="alert"></p>
     <footer><button type="button" class="secondary" id="settings-cancel">Cancelar</button><button type="button" class="primary" id="settings-save">Salvar alterações</button></footer>
+  </dialog>
+  <dialog id="company-dialog" aria-labelledby="company-dialog-title">
+    <header><h2 id="company-dialog-title">Complete os dados da empresa</h2></header>
+    <p>Estas informações são usadas no cabeçalho e nos orçamentos.</p>
+    <form id="company-form" novalidate>
+      <label>Nome da empresa<input name="nome" type="text" maxlength="160" autocomplete="organization" required></label>
+      <label>CNPJ<input name="cnpj" type="text" autocomplete="off" required></label>
+      <label>Endereço<input name="endereco" type="text" autocomplete="street-address" required></label>
+      <label>Telefone<input name="telefone" type="tel" autocomplete="tel" required></label>
+      <label>E-mail<input name="email" type="email" autocomplete="email" required></label>
+      <p id="company-dialog-error" role="alert"></p>
+      <footer><button class="primary" type="submit">Salvar e continuar</button></footer>
+    </form>
   </dialog>
   <dialog id="contact-dialog" aria-labelledby="contact-title"><header><h2 id="contact-title">Contato</h2><button type="button" id="close-contact" aria-label="Fechar contato">×</button></header><p id="contact-identity"></p><form id="contact-form"></form></dialog>
 </body>

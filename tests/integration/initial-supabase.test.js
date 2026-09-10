@@ -77,7 +77,7 @@ test('migração inicial cria um Supabase vazio e aceita o contrato atual', asyn
 });
 
 test('RPCs usam WHERE em DELETE e UPDATE em todas as migrações', async () => {
-  for (const name of ['202609080001_initial.sql', '202609080002_safe_workspace_writes.sql', '202609090001_quotation_details.sql']) {
+  for (const name of ['202609080001_initial.sql', '202609080002_safe_workspace_writes.sql', '202609090001_quotation_details.sql', '202609090005_refresh_workspace_contact_rpcs.sql', '202609090006_normalize_details.sql', '202609090007_company_profile.sql']) {
     const sql = await readFile(new URL(`../../supabase/migrations/${name}`, import.meta.url), 'utf8');
     const statements = sql.match(/\b(?:delete\s+from|update\s+public\.)[^;]+;/gi) || [];
     assert.ok(statements.length >= 1);

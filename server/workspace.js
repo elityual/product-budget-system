@@ -1,8 +1,20 @@
 import { currentDate, money, validatePayload } from './validation.js';
+import { validateCompanyProfile } from './company-profile.js';
 
 const moneyDisplay = (value) => Number(value) / 100;
 const revisionOf = (db) => Number(db.prepare("SELECT valor FROM atlas_meta WHERE chave='revision'").get().valor);
-const companyProfile = (value) => { try { return JSON.parse(value); } catch { return { nome: value || 'Atlas Máquinas & Obras' }; } };
+const informationDetails = (row) => {
+  const details = {};
+  if (row.pagamento) details.pagamento = row.pagamento;
+  if (row.prazo_entrega) details.entrega = row.prazo_entrega;
+  if (row.local_entrega) details.localEntrega = row.local_entrega;
+  if (row.observacoes) details.observacoes = row.observacoes;
+  const company = { nome: row.empresa_nome, cnpj: row.empresa_cnpj, endereco: row.empresa_endereco, telefone: row.empresa_telefone, email: row.empresa_email };
+  if (Object.values(company).some(Boolean)) details.company = company;
+  const client = { tipo: row.cliente_tipo, documento: row.cliente_documento, nome: row.cliente_nome, email: row.cliente_email, contato: row.cliente_pessoa_contato, telefone: row.cliente_telefone, endereco: row.cliente_endereco };
+  if (Object.values(client).some(Boolean)) details.client = client;
+  return details;
+};
 
 export function loadWorkspace(db) {
   const clientes = db.prepare('SELECT codigo,tipo,documento,nome FROM cliente ORDER BY codigo').all().map((row) => [row.codigo, row.tipo, row.documento, row.nome]);
@@ -12,13 +24,17 @@ export function loadWorkspace(db) {
   const categorias = db.prepare('SELECT codigo,descricao FROM categoria ORDER BY codigo').all().map((row) => [row.codigo, row.descricao]);
   const itens = db.prepare(`SELECT p.codigo,c.descricao categoria,p.nome,p.descricao,p.valor_venda,p.data_cadastro,p.status
     FROM produto p JOIN categoria c ON c.codigo=p.categoria_codigo ORDER BY p.codigo`).all().map((row) => [row.codigo, row.categoria, row.nome, row.descricao, moneyDisplay(row.valor_venda), row.data_cadastro, row.status]);
-  const orcamentos = db.prepare(`SELECT o.codigo,o.cliente_codigo,c.nome,o.data_emissao,o.validade,o.detalhes,coalesce(sum(i.quantidade*i.valor_unitario),0) total
+  const orcamentos = db.prepare(`SELECT o.codigo,o.cliente_codigo,c.nome,o.data_emissao,o.validade,coalesce(sum(i.quantidade*i.valor_unitario),0) total,
+    info.pagamento,info.prazo_entrega,info.local_entrega,info.observacoes,info.empresa_nome,info.empresa_cnpj,info.empresa_endereco,info.empresa_telefone,info.empresa_email,
+    info.cliente_tipo,info.cliente_documento,info.cliente_nome,info.cliente_email,info.cliente_pessoa_contato,info.cliente_telefone,info.cliente_endereco
     FROM orcamento o JOIN cliente c ON c.codigo=o.cliente_codigo LEFT JOIN item_orcamento i ON i.orcamento_codigo=o.codigo
-  GROUP BY o.codigo,c.nome ORDER BY o.codigo`).all().map((row) => [row.codigo, row.cliente_codigo, row.nome, row.data_emissao, row.validade, moneyDisplay(row.total), JSON.parse(row.detalhes || '{}')]);
+    LEFT JOIN orcamento_informacao info ON info.orcamento_codigo=o.codigo
+  GROUP BY o.codigo,c.nome ORDER BY o.codigo`).all().map((row) => [row.codigo, row.cliente_codigo, row.nome, row.data_emissao, row.validade, moneyDisplay(row.total), informationDetails(row)]);
   const itensOrcamento = db.prepare(`SELECT orcamento_codigo,produto_codigo,produto_nome,produto_descricao,quantidade,valor_unitario,quantidade*valor_unitario valor_total
     FROM item_orcamento ORDER BY orcamento_codigo,produto_codigo`).all().map((row) => [row.orcamento_codigo, row.produto_codigo, row.produto_nome, row.quantidade, moneyDisplay(row.valor_unitario), moneyDisplay(row.valor_total), row.produto_descricao]);
   const approved_codes = db.prepare('SELECT codigo FROM orcamento WHERE aprovado=1 ORDER BY codigo').all().map((row) => row.codigo);
-  const empresa = companyProfile(db.prepare("SELECT valor FROM atlas_meta WHERE chave='empresa'").get().valor);
+  const company = db.prepare('SELECT nome,cnpj,endereco,telefone,email,completo FROM empresa_perfil WHERE codigo=1').get();
+  const empresa = { nome: company.nome, cnpj: company.cnpj, endereco: company.endereco, telefone: company.telefone, email: company.email, completo: Boolean(company.completo) };
   return { payload: { clientes, contatosClientes, telefonesClientes, enderecosClientes, categorias, itens, orcamentos, itensOrcamento }, revision: revisionOf(db), approved_codes, empresa };
 }
 
@@ -93,14 +109,19 @@ export function saveWorkspace(db, expectedRevision, payload, inTransaction = fal
       else productUpdate.run(category.codigo, row[2], row[3], value, row[6], row[0]);
     }
 
-    const budgetInsert = db.prepare('INSERT INTO orcamento(cliente_codigo,data_emissao,validade,detalhes,aprovado) VALUES(?,?,?,?,0)');
-    const budgetInsertWithCode = db.prepare('INSERT INTO orcamento(codigo,cliente_codigo,data_emissao,validade,detalhes,aprovado) VALUES(?,?,?,?,?,0)');
-    const budgetUpdate = db.prepare('UPDATE orcamento SET cliente_codigo=?,validade=?,detalhes=? WHERE codigo=?');
+    const budgetInsert = db.prepare('INSERT INTO orcamento(cliente_codigo,data_emissao,validade,aprovado) VALUES(?,?,?,0)');
+    const budgetInsertWithCode = db.prepare('INSERT INTO orcamento(codigo,cliente_codigo,data_emissao,validade,aprovado) VALUES(?,?,?,?,0)');
+    const budgetUpdate = db.prepare('UPDATE orcamento SET cliente_codigo=?,validade=? WHERE codigo=?');
+    const informationSave = db.prepare('INSERT OR REPLACE INTO orcamento_informacao VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     let generatedBudget = null;
     for (const row of payload.orcamentos) {
-      if (row[0] == null) generatedBudget = Number(budgetInsert.run(row[1], currentDate(), row[4], JSON.stringify(row[6] || {})).lastInsertRowid);
-      else if (allowUnknownCodes && !db.prepare('SELECT 1 FROM orcamento WHERE codigo=?').get(row[0])) budgetInsertWithCode.run(row[0], row[1], row[3], row[4], JSON.stringify(row[6] || {}));
-      else budgetUpdate.run(row[1], row[4], JSON.stringify(row[6] || {}), row[0]);
+      if (row[0] == null) generatedBudget = Number(budgetInsert.run(row[1], currentDate(), row[4]).lastInsertRowid);
+      else if (allowUnknownCodes && !db.prepare('SELECT 1 FROM orcamento WHERE codigo=?').get(row[0])) budgetInsertWithCode.run(row[0], row[1], row[3], row[4]);
+      else budgetUpdate.run(row[1], row[4], row[0]);
+      const code = row[0] ?? generatedBudget; const details = row[6] || {}; const company = details.company || {}; const client = details.client || {};
+      informationSave.run(code, details.pagamento || '', details.entrega || '', details.localEntrega || '', details.observacoes || '',
+        company.nome || '', company.cnpj || '', company.endereco || '', company.telefone || '', company.email || '',
+        client.tipo || '', client.documento || '', client.nome || '', client.email || '', client.contato || '', client.telefone || '', client.endereco || '');
     }
     const itemInsert = db.prepare('INSERT INTO item_orcamento(orcamento_codigo,produto_codigo,produto_nome,quantidade,valor_unitario,produto_descricao) VALUES(?,?,?,?,?,?)');
     for (const row of payload.itensOrcamento) itemInsert.run(row[0] ?? generatedBudget, row[1], row[2], row[3], money(row[4]), row[6] || '');
@@ -130,8 +151,7 @@ export function approveWorkspace(db, expectedRevision, code) {
 }
 
 export function saveCompany(db, value) {
-  const empresa = typeof value === 'string' ? { nome: value } : value || {};
-  empresa.nome = String(empresa.nome || '').trim() || 'Atlas Máquinas & Obras';
-  db.prepare("UPDATE atlas_meta SET valor=? WHERE chave='empresa'").run(JSON.stringify(empresa));
-  return empresa;
+  const empresa = validateCompanyProfile(typeof value === 'string' ? { nome: value } : value);
+  db.prepare('UPDATE empresa_perfil SET nome=?,cnpj=?,endereco=?,telefone=?,email=?,completo=1 WHERE codigo=1').run(empresa.nome, empresa.cnpj, empresa.endereco, empresa.telefone, empresa.email);
+  return { ...empresa, completo: true };
 }

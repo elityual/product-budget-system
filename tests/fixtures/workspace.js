@@ -1,5 +1,6 @@
 // Workspace de exemplo compartilhado pelos testes do navegador e do banco.
 export const data = {
+  empresa: { nome: 'Atlas Máquinas & Obras', cnpj: '11.222.333/0001-81', endereco: 'Rua de teste, 1', telefone: '(11) 3333-4444', email: 'atlas@example.test', completo: true },
   clientes: [
     [1, 'Pessoa Jurídica', '11.222.333/0001-81', 'Construtora Horizonte'],
     [2, 'Pessoa Física', '529.982.247-25', 'Mariana Oliveira']

@@ -21,3 +21,12 @@ test('print escapes user text and isolates items by budget code', () => {
   assert.ok(html.includes('Condições comerciais'));
   assert.ok(html.includes('Descrição &lt;segura&gt;'));
 });
+
+test('print uses saved client identity snapshot', () => {
+  const client = [1, 'Pessoa Física', '529.982.247-25', 'Nome atual'];
+  const budget = [1, 1, 'Nome atual', '01/09/2026', '30/09/2026', 10, { client: { tipo: 'Pessoa Jurídica', documento: '11.222.333/0001-81', nome: 'Nome histórico' } }];
+  const html = createBudgetDocument(budget, client, [[1, 1, 'Produto', 1, 10, 10, '']], { nome: 'Atlas' });
+  assert.match(html, /Nome histórico/);
+  assert.match(html, /11\.222\.333\/0001-81/);
+  assert.doesNotMatch(html, /Nome atual/);
+});

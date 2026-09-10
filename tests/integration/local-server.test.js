@@ -38,6 +38,7 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
   try {
     const load = async () => (await local.request('/api/load')).json();
     assert.deepEqual((await load()).payload, empty);
+    assert.equal((await load()).empresa.completo, false);
     const unauthorized = await fetch(`${local.base}/api/load`);
     assert.equal(unauthorized.status, 401);
     assert.equal((await fetch(`${local.base}/atlas.sqlite`)).status, 404);
@@ -50,7 +51,9 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
       itensOrcamento: [[null, 1, 'Cimento', 2, 42.9, 0]],
       novoClienteContato: { email: 'compras@cliente.test', pessoa: 'Ana Compradora', telefones: ['(11) 99999-0000', '(11) 3333-0000'] }
     };
-    let response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: 0, payload }) });
+    let response = await local.request('/api/company', { method: 'POST', body: JSON.stringify({ empresa: { nome: 'Empresa local', cnpj: '11.222.333/0001-81', endereco: 'Rua A', telefone: '11999990000', email: 'local@example.test' } }) });
+    assert.equal(response.status, 200);
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: 0, payload }) });
     assert.equal(response.status, 200);
     const saved = await response.json();
     assert.equal(saved.payload.orcamentos[0][5], 85.8);
@@ -63,11 +66,13 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
     revisedPayload.enderecosClientes = [[null, 1, '01001-000', 'Praça da Sé', '1', '', 'Sé', 'São Paulo', 'SP', '', true]];
     revisedPayload.itens[0][4] = 1.11;
     revisedPayload.itensOrcamento[0][4] = 1.11;
+    revisedPayload.orcamentos[0][6] = { pagamento: '30 dias', entrega: '10 dias', company: { nome: 'Empresa histórica' }, client: { nome: 'Cliente histórico', documento: '11.222.333/0001-81' } };
     response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: saved.revision, payload: revisedPayload }) });
     const revised = await response.json();
     assert.equal(revised.payload.orcamentos[0][5], 2.22);
     assert.equal(revised.payload.telefonesClientes.length, 2);
     assert.equal(revised.payload.enderecosClientes[0][3], 'Praça da Sé');
+    assert.equal(revised.payload.orcamentos[0][6].company.nome, 'Empresa histórica');
     response = await local.request('/api/backup');
     const backup = await response.json();
     assert.equal(backup.schema_version, 1);
@@ -89,6 +94,7 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
       const persisted = await (await restarted.request('/api/load')).json();
       assert.equal(persisted.payload.orcamentos[0][5], 2.22);
       assert.equal(persisted.payload.contatosClientes[0][1], 'compras@cliente.test');
+      assert.equal(persisted.payload.orcamentos[0][6].client.nome, 'Cliente histórico');
       assert.equal(persisted.revision, 3);
     } finally { await stopLocalServer(restarted); }
   } finally {

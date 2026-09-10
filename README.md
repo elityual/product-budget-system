@@ -109,6 +109,12 @@ npm.cmd run test:e2e
 | `supabase/migrations/202609080001_initial.sql` | Instalação Supabase do zero: tabelas, RLS, permissões, aprovação e RPCs |
 | `supabase/migrations/202609090001_quotation_details.sql` | Atualização para perfil da empresa, contatos relacionados e detalhes históricos do orçamento |
 | `supabase/migrations/202609090002_legacy_budget_user.sql` | Corrige criação de orçamento em bancos legados com `user_id` obrigatório; execute após a migração de detalhes |
+| `supabase/audits/202609090003_legacy_user_id_audit.sql` | Consulta somente de leitura das dependências de `user_id` em tabelas comerciais legadas |
+| `supabase/migrations/202609090003_remove_legacy_commercial_user_id.sql` | Arquiva e remove `user_id` comercial legado sem `CASCADE`; execute após a auditoria |
+| `supabase/migrations/202609090004_migrate_legacy_composite_commercial_keys.sql` | Converte o esquema legado auditado com chaves compostas `(user_id, codigo)` para chaves comerciais por código |
+| `supabase/migrations/202609090005_refresh_workspace_contact_rpcs.sql` | Atualiza somente as RPCs de leitura e gravação para salvar os contatos obrigatórios de um cliente novo |
+| `supabase/migrations/202609090006_normalize_details.sql` | Move contatos e informações históricas para tabelas relacionadas e remove as colunas `detalhes` |
+| `supabase/migrations/202609090007_company_profile.sql` | Move o perfil obrigatório da empresa para tabela própria e atualiza as RPCs |
 | `supabase/seeds/example_data.sql` | Carga opcional de demonstração, protegida contra bancos já preenchidos |
 | `tests/integration/initial-supabase.test.js` | Teste da instalação Supabase em banco vazio |
 | `package.json`, `package-lock.json`, `.gitignore` | Comandos, dependências fixadas e exclusões de artefatos |
@@ -136,7 +142,7 @@ Para contribuir, leia [CONTRIBUTING.md](CONTRIBUTING.md). A automação em `.git
 
 ### Novo orçamento: seleção e revisão de itens
 
-A tela inicial permite escolher SQLite local ou Supabase e definir o nome da empresa exibido na aplicação e na impressão. O SQLite não exige login e funciona sem internet; o Supabase usa as credenciais informadas pelo operador. As Configurações do modo local oferecem backup e restauração validados.
+A tela inicial permite escolher SQLite local ou Supabase, sem exibir dados da empresa. O SQLite não exige login e funciona sem internet; o Supabase usa as credenciais informadas pelo operador. Após entrar, um perfil ausente ou inválido abre o cadastro obrigatório da empresa antes do uso da aplicação.
 
 A seleção inicial do orçamento exibe somente o nome do cliente, mantendo o código como referência interna. A etapa de itens usa duas colunas: produtos e quantidades à esquerda, lista adicionada e total à direita. ADICIONAR ITENS transfere as quantidades para o rascunho e limpa a seleção; adicionar novamente o mesmo produto soma sua quantidade. Itens podem ser removidos da lista. SALVAR ORÇAMENTO exige validade e ao menos um item adicionado, e grava somente a lista da direita. No celular, as colunas ficam empilhadas.
 
@@ -154,7 +160,7 @@ O ícone da Atlas representa um banco de dados nas cores da marca. O SVG local `
 
 O trabalho futuro, suas dependências e seus critérios de conclusão estão em [docs/ROADMAP.md](docs/ROADMAP.md). Regras comerciais atuais ficam em [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) e defeitos confirmados em [docs/ISSUES.md](docs/ISSUES.md).
 
-A migração inicial `supabase/migrations/202609080001_initial.sql` cria diretamente o modelo final em um projeto Supabase vazio. `tests/integration/initial-supabase.test.js` verifica o contrato em ambiente isolado; configure o primeiro administrador conforme [SUPABASE.md](docs/SUPABASE.md).
+A sequência para um projeto Supabase vazio começa em `202609080001_initial.sql` e termina em `202609090007_company_profile.sql`. Ela cria o modelo final sem as colunas genéricas `detalhes` e sem o JSON de empresa no workspace; configure o primeiro administrador conforme [SUPABASE.md](docs/SUPABASE.md).
 
 ## Permissões
 
@@ -163,6 +169,12 @@ O SQL inicial permite a todos os autenticados editar e excluir orçamentos e ite
 ## Impressão e PDF de orçamento
 
 Se salvar a empresa retornar `UPDATE requires a WHERE clause`, execute novamente o arquivo completo `supabase/migrations/202609090001_quotation_details.sql` no SQL Editor. A versão corrigida restringe a atualização ao workspace compartilhado e preserva dados e permissões.
+
+Se a inclusão criar o cliente, mas não guardar o bloco **Contato obrigatório**, execute `202609090005_refresh_workspace_contact_rpcs.sql` depois da migração `202609090004`. Essa atualização substitui somente as RPCs, sem converter novamente dados legados. Informações descartadas anteriormente pelo banco não podem ser recuperadas e devem ser preenchidas pela ação **Contato**.
+
+Depois dessa correção, execute `202609090006_normalize_details.sql`. Ela move termos comerciais e snapshots para `orcamento_informacao`, aproveita contatos legados ainda existentes e remove `cliente.detalhes` e `orcamento.detalhes`. O formato usado pelo navegador e pelos backups permanece compatível.
+
+Execute então `202609090007_company_profile.sql`. Os cinco dados da empresa passam para `empresa_perfil`; se qualquer campo estiver ausente ou inválido, o sistema solicita o preenchimento após entrar. Perfis completos não mostram novamente essa janela.
 
 O PDF também mostra, quando cadastrados, CNPJ, endereço, telefone e e-mail da empresa; contato e endereço do cliente; descrição histórica do produto; condições de pagamento, entrega e observações. Esses campos são opcionais e os documentos antigos continuam imprimíveis.
 
@@ -191,7 +203,7 @@ Para demonstração opcional, execute `supabase/seeds/example_data.sql` somente 
 
 ## Armazenamento local e Supabase
 
-No modo local, `server.js` mantém o SQLite em `%LOCALAPPDATA%\ProductBudgetControl`, sem login e sem internet. O banco é criado vazio; as Configurações oferecem backup e restauração validados, e o nome da empresa pode ser definido na primeira abertura.
+No modo local, `server.js` mantém o SQLite em `%LOCALAPPDATA%\ProductBudgetControl`, sem login e sem internet. O banco é criado vazio; após abrir, o perfil completo da empresa é solicitado uma única vez, e as Configurações oferecem edição, backup e restauração validados.
 
 No modo Supabase, a aplicação usa o projeto informado na tela, com login, RLS e permissões do SQL inicial. Os dois modos compartilham o contrato atual e não sincronizam dados entre si. A interface não contém URL, chave ou credenciais de produção.
 
