@@ -1,0 +1,56 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import { checkInstallSql } from '../../scripts/build-sql.mjs';
+
+test('instalador único está atualizado e instala cadastro e regras de orçamento', async () => {
+  await checkInstallSql();
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated; create schema auth;
+      create table auth.users(id uuid primary key,email text);
+      create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}'::jsonb) $$;
+      create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
+      grant usage on schema auth to anon,authenticated;
+      insert into auth.users values('33333333-3333-4333-8333-333333333333','admin@test');`);
+    await db.exec(await readFile(new URL('../../supabase/install.sql', import.meta.url), 'utf8'));
+    await db.exec(`set role authenticated; select set_config('request.jwt.claims','{"sub":"33333333-3333-4333-8333-333333333333"}',false);`);
+    const load = async () => (await db.query('select * from public.atlas_load_workspace()')).rows[0];
+    const save = async (revision, payload) => (await db.query('select public.atlas_save_workspace($1,$2::jsonb) result', [revision, JSON.stringify(payload)])).rows[0].result;
+    let current = await load();
+    for (const name of ['clientes', 'categorias', 'itens', 'orcamentos', 'itensOrcamento']) assert.deepEqual(current.payload[name], []);
+    const payload = current.payload;
+    payload.clientes = [[null, 'Pessoa Física', '529.982.247-25', 'Cliente']];
+    payload.novoClienteContato = { email: 'cliente@test.com', telefones: ['11999990000'] };
+    payload.categorias = [[null, 'Categoria']];
+    payload.itens = [[null, 'Categoria', 'Produto', 'Descrição', 10, '11/09/2026', 'Ativo']];
+    current = await save(current.revision, payload);
+    const product = current.payload.itens[0];
+    const client = current.payload.clientes[0];
+    current.payload.orcamentos.push([null, client[0], client[3], '11/09/2026', '31/12/2026', 0]);
+    current.payload.itensOrcamento.push([null, product[0], product[2], 2, 10, 0, product[3]]);
+    current = await save(current.revision, current.payload);
+    assert.equal(current.payload.orcamentos[0][5], 20);
+    current.payload.itens[0][6] = 'Inativo';
+    current = await save(current.revision, current.payload);
+    const before = await load();
+    const invalid = structuredClone(current.payload);
+    invalid.itensOrcamento[0][3] = 3;
+    await assert.rejects(save(current.revision, invalid), /Produto inativo/);
+    invalid.itensOrcamento[0][3] = 2;
+    invalid.orcamentos.push([null, client[0], client[3], '11/09/2026', '31/12/2026', 0]);
+    invalid.itensOrcamento.push([null, product[0], product[2], 1, 10, 10, product[3]]);
+    await assert.rejects(save(current.revision, invalid), /Produto inativo/);
+    assert.deepEqual(await load(), before);
+    const code = current.payload.orcamentos[0][0];
+    current = (await db.query('select public.atlas_approve_budget($1,$2) result', [current.revision, code])).rows[0].result;
+    assert.deepEqual(current.approved_codes, [code]);
+    const approvedItems = structuredClone(current.payload.itensOrcamento);
+    current.payload.orcamentos[0][4] = '30/11/2026';
+    current = await save(current.revision, current.payload);
+    assert.deepEqual(current.payload.itensOrcamento, approvedItems);
+    current.payload.itensOrcamento[0][3] = 1;
+    await assert.rejects(save(current.revision, current.payload), /itens de um orçamento aprovado/);
+  } finally { await db.close(); }
+});

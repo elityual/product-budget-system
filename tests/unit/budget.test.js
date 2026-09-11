@@ -8,7 +8,8 @@ import {
   filterBudgetClients,
   filterBudgetProducts,
   formatDateForDisplay,
-  formatDateForInput
+  formatDateForInput,
+  inactiveBudgetItemViolations
 } from '../../assets/js/budget.js';
 
 test('pesquisa clientes pelo nome para iniciar um orçamento', () => {
@@ -21,11 +22,11 @@ test('pesquisa clientes pelo nome para iniciar um orçamento', () => {
   assert.deepEqual(filterBudgetClients(clients, 'cliente inexistente'), []);
 });
 
-test('pesquisa e filtra produtos do orçamento por categoria', () => {
+test('pesquisa e filtra somente produtos ativos do orçamento por categoria', () => {
   const products = [
-    [1, 'Materiais', 'Cimento', 'Saco de 50 kg', 42.9],
-    [2, 'Ferramentas', 'Furadeira', 'Modelo elétrico', 359],
-    [3, 'Ferramentas', 'Serra', 'Disco para madeira', 220]
+    [1, 'Materiais', 'Cimento', 'Saco de 50 kg', 42.9, '01/09/2026', 'Ativo'],
+    [2, 'Ferramentas', 'Furadeira', 'Modelo elétrico', 359, '01/09/2026', 'Ativo'],
+    [3, 'Ferramentas', 'Serra', 'Disco para madeira', 220, '01/09/2026', 'Inativo']
   ];
 
   assert.deepEqual(filterBudgetProducts(products, {
@@ -36,6 +37,17 @@ test('pesquisa e filtra produtos do orçamento por categoria', () => {
     search: 'cimento',
     category: 'Ferramentas'
   }), []);
+  assert.deepEqual(filterBudgetProducts(products, { search: 'serra' }), []);
+});
+
+test('produto inativo só preserva ou reduz a quantidade histórica', () => {
+  const products = [[2, 'Ferramentas', 'Furadeira', 'Modelo elétrico', 359, '01/09/2026', 'Inativo']];
+  const originalItems = [[102, 2, 'Furadeira', 3, 359, 1077, 'Modelo elétrico']];
+  assert.deepEqual(inactiveBudgetItemViolations(products, originalItems, { 2: 3 }), []);
+  assert.deepEqual(inactiveBudgetItemViolations(products, originalItems, { 2: 2 }), []);
+  assert.deepEqual(inactiveBudgetItemViolations(products, originalItems, {}), []);
+  assert.deepEqual(inactiveBudgetItemViolations(products, originalItems, { 2: 4 }), [2]);
+  assert.deepEqual(inactiveBudgetItemViolations(products, [], { 2: 1 }), [2]);
 });
 
 test('cria orçamento com todas as colunas esperadas', () => {

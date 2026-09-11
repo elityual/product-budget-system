@@ -5,7 +5,7 @@ O Supabase é opcional. Escolha “Banco local neste computador” para usar SQL
 ## Criar o projeto
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo.
-2. Abra o SQL Editor e execute, nesta ordem, os arquivos inteiros `202609080001_initial.sql`, `202609090001_quotation_details.sql`, `202609090005_refresh_workspace_contact_rpcs.sql`, `202609090006_normalize_details.sql` e `202609090007_company_profile.sql`. Eles criam as tabelas vazias, contatos relacionados, informações normalizadas, perfil da empresa, regras de segurança e RPCs atuais. As migrações `090002` a `090004` são corretivas para bancos legados e não são necessárias em um projeto vazio.
+2. Abra o SQL Editor e execute o arquivo inteiro [`supabase/install.sql`](../supabase/install.sql). Esse único arquivo instala as tabelas vazias, contatos, perfil da empresa, informações históricas, regras de orçamento, segurança e RPCs atuais. Ele já inclui as nove migrações necessárias à instalação nova; não execute essas migrações separadamente nessa instalação.
 3. Em Authentication > Users, crie um usuário confirmado com e-mail e senha.
 4. No SQL Editor, defina esse usuário como administrador, substituindo o e-mail:
 
@@ -31,6 +31,7 @@ Depois de confirmar que o projeto está vazio, o operador pode executar [`supaba
 
 - Entre com a conta criada e confirme que Clientes, Produtos e Orçamentos aparecem vazios.
 - Crie uma categoria, um produto, um cliente e um orçamento; confira o total e a referência pelo código do cliente.
+- Inative um produto usado em orçamento pendente; confirme que ele some do catálogo, continua identificado no item histórico e permite somente manter, reduzir ou remover sua quantidade.
 - Abra outra sessão autenticada para confirmar o compartilhamento.
 - Confirme que o administrador vê exclusões de catálogo e que uma conta comum não vê essas ações, mas pode editar orçamentos.
 - Altere dados em duas abas e salve a aba antiga; a gravação deve ser rejeitada por conflito e os dados não devem ser sobrescritos.
@@ -95,3 +96,5 @@ Essa migração confirma que `cliente.codigo` é uma chave primária ou única a
 - “Conflito”: recarregue a página para obter a revisão atual antes de salvar novamente.
 
 Para uso sem Supabase, volte à tela inicial e escolha o banco local. O SQLite é criado automaticamente em `%LOCALAPPDATA%\ProductBudgetControl` (ou em `.local-data/ProductBudgetControl` sem `LOCALAPPDATA`); backups locais ficam disponíveis no cabeçalho.
+
+Em projetos já instalados, execute [`202609110001_inactive_budget_products.sql`](../supabase/migrations/202609110001_inactive_budget_products.sql) depois de `202609100003_approved_budget_items.sql`. A migração é transacional e reaplicável, não altera o formato do payload e passa a rejeitar novas inclusões ou aumentos de produtos inativos sem modificar itens históricos existentes.

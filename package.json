@@ -5,6 +5,7 @@
     "scripts": {
         "start": "node server.js",
         "build:launcher": "node scripts/build-launcher.mjs",
+        "build:sql": "node scripts/build-sql.mjs",
         "package:source": "node scripts/package-source.mjs",
         "check": "node scripts/check.mjs",
         "test": "node scripts/test.mjs",

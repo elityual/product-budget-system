@@ -23,10 +23,24 @@ export function filterBudgetProducts(
   const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
 
   return products.filter((product) => {
+    const isActive = product[6] === 'Ativo';
     const searchableText = `${product[2]} ${product[3]}`.toLocaleLowerCase('pt-BR');
     const matchesSearch = searchableText.includes(normalizedSearch);
     const matchesCategory = !category || product[1] === category;
-    return matchesSearch && matchesCategory;
+    return isActive && matchesSearch && matchesCategory;
+  });
+}
+
+export function inactiveBudgetItemViolations(products, originalItems, quantities) {
+  const productByCode = new Map(products.map((product) => [Number(product[0]), product]));
+  const originalQuantityByCode = new Map(originalItems.map((item) => [Number(item[1]), Number(item[3])]));
+
+  return Object.entries(quantities).flatMap(([code, quantity]) => {
+    const product = productByCode.get(Number(code));
+    const currentQuantity = Number(quantity);
+    if (product?.[6] !== 'Inativo' || currentQuantity <= 0) return [];
+    const originalQuantity = originalQuantityByCode.get(Number(code)) ?? 0;
+    return currentQuantity > originalQuantity ? [Number(code)] : [];
   });
 }
 

@@ -1,5 +1,5 @@
 import { data, state, get, approvedBudgets } from './data.js';
-import { calculateBudgetTotal, createBudgetItemRecords, createBudgetRecord, filterBudgetClients, filterBudgetProducts, formatDateForInput } from './budget.js';
+import { calculateBudgetTotal, createBudgetItemRecords, createBudgetRecord, filterBudgetClients, filterBudgetProducts, formatDateForInput, inactiveBudgetItemViolations } from './budget.js';
 import { formatCurrency, recordsPerPage } from './table.js';
 export function createBudgetFlow({ render, resetFilters, closeModal, persist }) {
   let selectedBudgetClientCode = "";
@@ -169,6 +169,14 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       const name = document.createElement('strong');
       name.textContent = item[2];
       details.append(name);
+      const product = data.itens.find((row) => Number(row[0]) === Number(item[1]));
+      const inactive = product?.[6] === 'Inativo';
+      if (inactive) {
+        const status = document.createElement('span');
+        status.className = 'budget-inactive-product';
+        status.textContent = 'Produto inativo';
+        details.append(status);
+      }
       if (isEditing && item[6]) {
         const description = document.createElement('span');
         description.textContent = item[6];
@@ -189,6 +197,8 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       quantityInput.min = '1';
       quantityInput.step = '1';
       quantityInput.required = true;
+      const originalQuantity = originalItems.find((row) => Number(row[1]) === Number(item[1]))?.[3];
+      if (inactive && originalQuantity != null) quantityInput.max = String(originalQuantity);
       quantityInput.value = item[3];
       quantityInput.setAttribute('aria-label', `Quantidade de ${item[2]}`);
       quantityInput.onchange = () => {
@@ -359,6 +369,15 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       const approvedEdit = Boolean(existingRecord && approvedBudgets.has(budgetCode));
       const budgetItems = (approvedEdit ? originalItems : selectedItems())
         .map((item) => [budgetCode, ...item.slice(1)]);
+
+      if (!approvedEdit && inactiveBudgetItemViolations(data.itens, originalItems, selectedQuantities).length) {
+        const error = get('#budget-items-error');
+        if (error) {
+          error.textContent = 'Produtos inativos só podem manter ou reduzir a quantidade já salva.';
+          error.classList.remove('hidden');
+        }
+        return;
+      }
 
       if (budgetItems.length === 0) {
         get('#budget-items-error')?.classList.remove('hidden');

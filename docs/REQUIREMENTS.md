@@ -74,7 +74,7 @@ Não há consulta externa de situação cadastral de CPF/CNPJ.
 | ORC-001 | Campos e contrato | O orçamento usa `[codigo, clienteCodigo, clienteNome, data, validade, total]`; código e data de emissão são imutáveis. | Implementado |
 | ORC-002 | Cliente | A criação e a edição selecionam cliente por código e nome; clientes homônimos continuam distinguíveis pelo código. | Implementado |
 | ORC-003 | Validade | A validade é obrigatória e deve ser uma data válida. | Implementado |
-| ORC-004 | Seleção de produtos | A etapa de itens pesquisa por nome ou descrição, filtra por categoria e mostra preço e descrição do produto. | Implementado |
+| ORC-004 | Seleção de produtos | A etapa de itens mostra somente produtos ativos, pesquisa por nome ou descrição, filtra por categoria e apresenta preço e descrição. Produto inativo não pode entrar em orçamento novo. | Implementado |
 | ORC-005 | Quantidades | Somente quantidades inteiras positivas entram no rascunho; adicionar o mesmo produto novamente soma a quantidade. | Implementado |
 | ORC-006 | Salvamento atômico | Um orçamento só é salvo com pelo menos um item; orçamento e itens são persistidos na mesma operação. | Implementado |
 | ORC-007 | Totais | O total de cada item é quantidade × preço unitário e o total do orçamento é a soma dos itens. Valores usam precisão de centavos. No Supabase, a RPC recalcula pelos itens recebidos e grava também em orcamento.valor_total ao criar ou editar, atomicamente; totais fornecidos pelo frontend não prevalecem. A migração 202609100002_budget_total.sql corrige bancos com a coluna obrigatória e recalcula registros existentes. Cada chamada aceita no máximo um orçamento novo. Aplicação remota da migração é necessária. | Implementado |
@@ -85,6 +85,7 @@ Não há consulta externa de situação cadastral de CPF/CNPJ.
 | ORC-012 | Edição de aprovados | Editar um orçamento aprovado mantém sua aprovação e permite corrigir cliente, validade e condições comerciais. Produtos, quantidades, preços, descrições e total não podem mudar pela interface, SQLite ou Supabase; a migração 202609100003_approved_budget_items.sql valida os itens antes de gravar. A criação e a edição de pendentes não exibem condições comerciais. Estados Enviado e Cancelado e reversão não fazem parte do comportamento atual. | Implementado |
 | ORC-013 | Impressão | A prévia contém empresa, cliente, documento atual, código, emissão, validade, itens históricos, subtotais, total e, quando preenchidos, contatos e condições comerciais; controles de interface ficam ocultos na impressão. | Implementado |
 | ORC-014 | PDF | O botão da prévia abre o diálogo nativo do navegador para imprimir ou salvar como PDF, por evento JavaScript compatível com a política de segurança. | Implementado |
+| ORC-015 | Produto inativado | Item de produto posteriormente inativado permanece no orçamento e é identificado na edição. Em pendentes, pode manter ou reduzir a quantidade ou ser removido, mas não pode aumentar; a quantidade reduzida e salva vira o novo limite. Aprovados preservam seus itens imutáveis. Interface, SQLite e Supabase aplicam a regra atomicamente; restaurações locais preservam backups históricos. | Implementado |
 
 O rascunho é mantido no navegador até a confirmação de salvamento. Cancelar a confirmação não grava alterações.
 
@@ -162,6 +163,8 @@ Correção implementada de ARM-003 para Supabase: gravação e aprovação usam 
 | UI-008 | Fluxo sem perda | Falha de gravação restaura o snapshot anterior e mantém o formulário para correção. | Implementado |
 
 ## Limitações e manutenção
+
+- **INS-001 — Instalação Supabase:** uma instalação nova executa somente `supabase/install.sql`, sem dados de exemplo; o primeiro administrador é configurado conforme o guia. O arquivo é gerado por `npm run build:sql` a partir das nove migrações aplicáveis, e verificações e empacotamento rejeitam versões desatualizadas. Migrações individuais continuam disponíveis para bancos existentes. **Implementado**.
 
 ### Distribuição Windows opcional
 

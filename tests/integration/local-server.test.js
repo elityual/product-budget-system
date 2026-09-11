@@ -73,7 +73,30 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
     assert.equal(revised.payload.telefonesClientes.length, 2);
     assert.equal(revised.payload.enderecosClientes[0][3], 'Praça da Sé');
     assert.equal(revised.payload.orcamentos[0][6].company.nome, 'Empresa histórica');
-    response = await local.request('/api/approve', { method: 'POST', body: JSON.stringify({ expected_revision: revised.revision, code: 1, conditions: { pagamento: 'À vista', entrega: '5 dias', localEntrega: 'Obra', observacoes: 'Aprovado' } }) });
+    const inactiveIncrease = structuredClone(revised.payload);
+    inactiveIncrease.itens[0][6] = 'Inativo';
+    inactiveIncrease.itensOrcamento[0][3] = 3;
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: revised.revision, payload: inactiveIncrease }) });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /Produto inativo/);
+    assert.equal((await load()).revision, revised.revision);
+    const inactiveSame = structuredClone(revised.payload);
+    inactiveSame.itens[0][6] = 'Inativo';
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: revised.revision, payload: inactiveSame }) });
+    const inactiveSaved = await response.json();
+    const inactiveReducedPayload = structuredClone(inactiveSaved.payload);
+    inactiveReducedPayload.itensOrcamento[0][3] = 1;
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: inactiveSaved.revision, payload: inactiveReducedPayload }) });
+    const inactiveReduced = await response.json();
+    const inactiveReincrease = structuredClone(inactiveReduced.payload);
+    inactiveReincrease.itensOrcamento[0][3] = 2;
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: inactiveReduced.revision, payload: inactiveReincrease }) });
+    assert.equal(response.status, 400);
+    const reactivatedPayload = structuredClone(inactiveReincrease);
+    reactivatedPayload.itens[0][6] = 'Ativo';
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: inactiveReduced.revision, payload: reactivatedPayload }) });
+    const reactivated = await response.json();
+    response = await local.request('/api/approve', { method: 'POST', body: JSON.stringify({ expected_revision: reactivated.revision, code: 1, conditions: { pagamento: 'À vista', entrega: '5 dias', localEntrega: 'Obra', observacoes: 'Aprovado' } }) });
     const approved = await response.json();
     assert.deepEqual(approved.approved_codes, [1]);
     assert.equal(approved.payload.orcamentos[0][6].pagamento, 'À vista');
@@ -96,8 +119,11 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
     const backup = await response.json();
     assert.equal(backup.schema_version, 1);
     assert.ok((await readdir(join(local.directory, 'backups'))).length >= 1);
+    backup.payload.itens[0][6] = 'Inativo';
     const restore = await local.request('/api/restore', { method: 'POST', body: JSON.stringify(backup) });
-    assert.equal((await restore.json()).payload.clientes[0][0], 1);
+    const restored = await restore.json();
+    assert.equal(restored.payload.clientes[0][0], 1);
+    assert.equal(restored.payload.itens[0][6], 'Inativo');
     assert.equal((await load()).payload.orcamentos[0][5], 2.22);
     response = await local.request('/api/restore', { method: 'POST', body: JSON.stringify({ schema_version: 99, payload: empty }) });
     assert.equal(response.status, 400);
@@ -114,7 +140,7 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
       assert.equal(persisted.payload.orcamentos[0][5], 2.22);
       assert.equal(persisted.payload.contatosClientes[0][1], 'compras@cliente.test');
       assert.equal(persisted.payload.orcamentos[0][6].client.nome, 'Cliente histórico');
-      assert.equal(persisted.revision, 5);
+      assert.equal(persisted.revision, 8);
     } finally { await stopLocalServer(restarted); }
   } finally {
     if (local.server.listening) await stopLocalServer(local);

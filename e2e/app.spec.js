@@ -232,15 +232,13 @@ test('novo orçamento grava itens e totais; exclusão autorizada remove ambos', 
   await page.locator('#budget-client-options input').first().check();
   await page.locator('#confirm-budget-client').click();
   await page.locator('#form [name=validade]').fill('2026-12-31');
+  await expect(page.locator('[data-product-code="2"]')).toHaveCount(0);
+  await expect(page.locator('#budget-products')).not.toContainText('Furadeira profissional');
   await page.locator('[data-product-code="1"]').fill('3');
   await expect(page.locator('#save-budget')).toBeDisabled();
   await page.locator('#add-budget-items').click();
   await expect(page.locator('#selected-budget-items')).toContainText('Cimento');
   expect(api.saved().orcamentos).toHaveLength(1);
-  await page.locator('[data-product-code="2"]').fill('1');
-  await page.locator('#add-budget-items').click();
-  await page.getByRole('button', { name: 'Remover Furadeira profissional', exact: true }).click();
-  await expect(page.locator('#selected-budget-items')).not.toContainText('Furadeira');
   await page.getByRole('button', { name: 'SALVAR ORÇAMENTO', exact: true }).click();
   await expect(page.locator('#overlay')).toBeHidden();
   expect(api.saved().orcamentos[1][5]).toBeCloseTo(128.7);
@@ -329,6 +327,7 @@ test('budget edit confirms item changes and preserves original date and prices',
   await expect(page.locator('.budget-edit-footer #exit-budget-items')).toBeVisible();
   await expect(page.locator('.budget-edit-footer #save-budget')).toBeVisible();
   await expect(page.locator('#selected-budget-items')).toContainText('Furadeira');
+  await expect(page.locator('#selected-budget-items')).toContainText('Produto inativo');
   await expect(page.locator('#selected-budget-items')).toContainText('Valor unitário');
   await expect(page.locator('#selected-budget-items')).toContainText('Subtotal');
   await page.getByRole('button', { name: 'Remover Furadeira profissional', exact: true }).click();

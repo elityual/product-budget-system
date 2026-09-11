@@ -109,6 +109,7 @@ npm.cmd run test:e2e
 | `tests/unit/`, `tests/integration/`, `tests/fixtures/` | Testes unitários, integração SQLite/Supabase e dados de teste |
 | `e2e/app.spec.js`, `playwright.config.js` | Testes de navegador e servidor de teste |
 | `supabase/migrations/202609080001_initial.sql` | Instalação Supabase do zero: tabelas, RLS, permissões, aprovação e RPCs |
+| `supabase/install.sql`, `scripts/build-sql.mjs` | Instalador completo para projetos Supabase novos e gerador determinístico a partir das nove migrações de instalação |
 | `supabase/migrations/202609090001_quotation_details.sql` | Atualização para perfil da empresa, contatos relacionados e detalhes históricos do orçamento |
 | `supabase/migrations/202609090002_legacy_budget_user.sql` | Corrige criação de orçamento em bancos legados com `user_id` obrigatório; execute após a migração de detalhes |
 | `supabase/audits/202609090003_legacy_user_id_audit.sql` | Consulta somente de leitura das dependências de `user_id` em tabelas comerciais legadas |
@@ -117,6 +118,7 @@ npm.cmd run test:e2e
 | `supabase/migrations/202609090005_refresh_workspace_contact_rpcs.sql` | Atualiza somente as RPCs de leitura e gravação para salvar os contatos obrigatórios de um cliente novo |
 | `supabase/migrations/202609090006_normalize_details.sql` | Move contatos e informações históricas para tabelas relacionadas e remove as colunas `detalhes` |
 | `supabase/migrations/202609090007_company_profile.sql` | Move o perfil obrigatório da empresa para tabela própria e atualiza as RPCs |
+| `supabase/migrations/202609110001_inactive_budget_products.sql` | Impede incluir ou aumentar produtos inativos em orçamentos, preservando quantidades históricas |
 | `supabase/seeds/example_data.sql` | Carga opcional de demonstração, protegida contra bancos já preenchidos |
 | `tests/integration/initial-supabase.test.js` | Teste da instalação Supabase em banco vazio |
 | `package.json`, `package-lock.json`, `.gitignore` | Comandos, dependências fixadas e exclusões de artefatos |
@@ -146,9 +148,9 @@ Para contribuir, leia [CONTRIBUTING.md](CONTRIBUTING.md). A automação em `.git
 
 A tela inicial permite escolher SQLite local ou Supabase, sem exibir dados da empresa. O SQLite não exige login e funciona sem internet; o Supabase usa as credenciais informadas pelo operador. Após entrar, um perfil ausente ou inválido abre o cadastro obrigatório da empresa antes do uso da aplicação.
 
-A seleção inicial do orçamento exibe somente o nome do cliente, mantendo o código como referência interna. A etapa de itens usa duas colunas: produtos e quantidades à esquerda, lista adicionada e total à direita. ADICIONAR ITENS transfere as quantidades para o rascunho e limpa a seleção; adicionar novamente o mesmo produto soma sua quantidade. Itens podem ser removidos da lista. SALVAR ORÇAMENTO exige validade e ao menos um item adicionado, e grava somente a lista da direita. No celular, as colunas ficam empilhadas.
+A seleção inicial do orçamento exibe somente o nome do cliente, mantendo o código como referência interna. A etapa de itens usa duas colunas: produtos ativos e quantidades à esquerda, lista adicionada e total à direita. Produtos inativos não aparecem no catálogo, na pesquisa nem no filtro por categoria. ADICIONAR ITENS transfere as quantidades para o rascunho e limpa a seleção; adicionar novamente o mesmo produto soma sua quantidade. Itens podem ser removidos da lista. SALVAR ORÇAMENTO exige validade e ao menos um item adicionado, e grava somente a lista da direita. No celular, as colunas ficam empilhadas.
 
-Editar orçamento identifica o código e a situação no cabeçalho e agrupa cliente e validade no topo. As condições comerciais dos aprovados aparecem antes dos itens. Nos pendentes, catálogo e itens existentes ocupam painéis lado a lado; cada item alinha produto, descrição, quantidade, valor unitário e subtotal. Nos aprovados, os itens históricos ocupam toda a largura e ficam somente para consulta. O total aparece destacado, e Sair e Salvar orçamento ficam juntos no rodapé. No celular, painéis e dados de cada item são empilhados sem rolagem horizontal. Salvar pede confirmação e preserva código, data original e nomes/preços históricos dos itens existentes. Cancelar a confirmação mantém o rascunho sem gravar.
+Editar orçamento identifica o código e a situação no cabeçalho e agrupa cliente e validade no topo. As condições comerciais dos aprovados aparecem antes dos itens. Nos pendentes, catálogo e itens existentes ocupam painéis lado a lado; cada item alinha produto, descrição, quantidade, valor unitário e subtotal. Um produto inativado depois da criação permanece identificado no resumo e pode ser mantido, reduzido ou removido, mas não aumentado; após uma redução salva, essa quantidade passa a ser o novo limite. Nos aprovados, os itens históricos ocupam toda a largura e ficam somente para consulta. O total aparece destacado, e Sair e Salvar orçamento ficam juntos no rodapé. No celular, painéis e dados de cada item são empilhados sem rolagem horizontal. Salvar pede confirmação e preserva código, data original e nomes/preços históricos dos itens existentes. Cancelar a confirmação mantém o rascunho sem gravar.
 
 O ícone da Atlas representa um banco de dados nas cores da marca. O SVG local `assets/icons/atlas.svg` é reutilizado no cabeçalho e como favicon da aba. No cabeçalho, a imagem usa texto alternativo vazio porque a marca Atlas já aparece ao lado.
 
@@ -162,7 +164,9 @@ O ícone da Atlas representa um banco de dados nas cores da marca. O SVG local `
 
 O trabalho futuro, suas dependências e seus critérios de conclusão estão em [docs/ROADMAP.md](docs/ROADMAP.md). Regras comerciais atuais ficam em [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) e defeitos confirmados em [docs/ISSUES.md](docs/ISSUES.md).
 
-A sequência para um projeto Supabase vazio começa em `202609080001_initial.sql` e termina em `202609090007_company_profile.sql`. Ela cria o modelo final sem as colunas genéricas `detalhes` e sem o JSON de empresa no workspace; configure o primeiro administrador conforme [SUPABASE.md](docs/SUPABASE.md).
+Para um projeto Supabase novo, execute apenas [`supabase/install.sql`](supabase/install.sql) no SQL Editor e configure o primeiro administrador conforme [SUPABASE.md](docs/SUPABASE.md). O arquivo inclui todas as regras atuais e começa sem dados de exemplo. Bancos existentes continuam usando as migrações individuais.
+
+Após alterar uma migração incluída no instalador, execute `npm run build:sql`; ao adicionar uma migração necessária para instalações novas, inclua-a também na lista de `scripts/build-sql.mjs`. `npm run check` e `npm run package:source` recusam um instalador desatualizado. O pacote de fontes inclui o SQL único e o gerador, sem novas dependências ou variáveis de ambiente.
 
 ## Permissões
 

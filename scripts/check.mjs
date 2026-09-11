@@ -2,6 +2,9 @@ import { readdir } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { checkInstallSql } from './build-sql.mjs';
+
+await checkInstallSql();
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const roots = ['assets/js', 'server', 'scripts', 'tests', 'e2e'];

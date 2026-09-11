@@ -2,6 +2,9 @@ import { gzipSync } from 'node:zlib';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkInstallSql } from './build-sql.mjs';
+
+await checkInstallSql();
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDirectory = join(root, 'release');

@@ -44,6 +44,17 @@ export function saveWorkspace(db, expectedRevision, payload, inTransaction = fal
   for (const row of payload.itensOrcamento || []) if (row.length === 6) row.push('');
   validatePayload(db, payload, allowUnknownCodes);
   if (revisionOf(db) !== Number(expectedRevision)) return null;
+  if (!allowUnknownCodes) {
+    const existingQuantity = db.prepare('SELECT quantidade FROM item_orcamento WHERE orcamento_codigo=? AND produto_codigo=?');
+    const productStatus = new Map(payload.itens.map((row) => [Number(row[0]), row[6]]));
+    for (const row of payload.itensOrcamento) {
+      if (productStatus.get(Number(row[1])) !== 'Inativo') continue;
+      const existing = row[0] == null ? null : existingQuantity.get(Number(row[0]), Number(row[1]));
+      if (!existing || Number(row[3]) > Number(existing.quantidade)) {
+        throw new Error('Produto inativo não pode ser incluído nem ter sua quantidade aumentada no orçamento.');
+      }
+    }
+  }
   const approvedItemRows = db.prepare('SELECT produto_codigo,produto_nome,quantidade,valor_unitario,produto_descricao FROM item_orcamento WHERE orcamento_codigo=? ORDER BY produto_codigo');
   for (const budget of db.prepare('SELECT codigo FROM orcamento WHERE aprovado=1').all()) {
     if (!payload.orcamentos.some((row) => Number(row[0]) === budget.codigo)) continue;
