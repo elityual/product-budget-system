@@ -1,0 +1,65 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+
+const migration = (name) => readFile(new URL('../../supabase/migrations/' + name, import.meta.url), 'utf8');
+
+for (const legacy of [false, true]) test('total persistido no Supabase: ' + (legacy ? 'legado' : 'novo'), async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key,email text);
+      create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}'::jsonb) $$;
+      create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
+      grant usage on schema auth to anon,authenticated;
+      insert into auth.users values('33333333-3333-4333-8333-333333333333','admin@test');`);
+    for (const name of ['202609080001_initial.sql', '202609090001_quotation_details.sql', '202609090006_normalize_details.sql', '202609090007_company_profile.sql', '202609100001_approval_commercial_terms.sql']) await db.exec(await migration(name));
+    if (legacy) await db.exec('alter table public.orcamento add column valor_total numeric(18,2) not null');
+    await db.exec("insert into public.cliente(tipo,documento,nome) values('Pessoa Física','529.982.247-25','Cliente'); insert into public.categoria(descricao) values('Categoria'); insert into public.produto(categoria_codigo,nome,descricao,valor_venda,status) values(1,'Produto A','A',1.11,'Ativo'),(1,'Produto B','B',2.22,'Ativo')");
+    const authenticate = () => db.exec(`set role authenticated; select set_config('request.jwt.claims','{"sub":"33333333-3333-4333-8333-333333333333"}',false);`);
+    await authenticate();
+    let payload = (await db.query('select payload from public.atlas_load_workspace()')).rows[0].payload;
+    payload.orcamentos = [[null, 1, 'Cliente', '10/09/2026', '11/09/2026', 999]];
+    payload.itensOrcamento = [[null, 1, 'Produto A', 3, 1.11, 999], [null, 2, 'Produto B', 2, 2.22, 999]];
+    const save = async (revision, data) => (await db.query('select public.atlas_save_workspace($1,$2::jsonb) result', [revision, JSON.stringify(data)])).rows[0].result;
+    if (legacy) await assert.rejects(save(0, payload), (error) => error.code === '23502');
+    await db.exec('reset role');
+    const sql = await migration('202609100002_budget_total.sql');
+    await db.exec(sql); await db.exec(sql);
+    await db.exec(await migration('202609100003_approved_budget_items.sql'));
+    await authenticate();
+    let saved = await save(0, payload);
+    assert.equal(saved.payload.orcamentos[0][5], 7.77);
+    const code = saved.payload.orcamentos[0][0];
+    assert.equal(Number((await db.query('select valor_total from public.orcamento where codigo=$1', [code])).rows[0].valor_total), 7.77);
+    payload = saved.payload;
+    payload.orcamentos.push([null, 1, 'Cliente', '10/09/2026', '11/09/2026', 999]);
+    payload.itensOrcamento = [[code, 1, 'Produto A', 2, 3.45, 999], [null, 2, 'Produto B', 3, 2.22, 999]];
+    saved = await save(1, payload);
+    assert.deepEqual(saved.payload.orcamentos.map((row) => row[5]), [6.9, 6.66]);
+    assert.deepEqual((await db.query('select valor_total from public.orcamento order by codigo')).rows.map((r) => Number(r.valor_total)), [6.9, 6.66]);
+    const invalid = structuredClone(saved.payload);
+    invalid.orcamentos.push([null,1,'Cliente','10/09/2026','11/09/2026',0], [null,1,'Cliente','10/09/2026','11/09/2026',0]);
+    await assert.rejects(save(2, invalid), /Somente um orçamento novo/);
+    invalid.orcamentos = saved.payload.orcamentos;
+    invalid.itensOrcamento[0][3] = -1;
+    await assert.rejects(save(2, invalid));
+    assert.equal((await db.query('select revision from public.atlas_load_workspace()')).rows[0].revision, 2);
+    assert.deepEqual((await db.query('select valor_total from public.orcamento order by codigo')).rows.map((r) => Number(r.valor_total)), [6.9, 6.66]);
+    const approved = (await db.query('select public.atlas_approve_budget(2,$1) result', [code])).rows[0].result;
+    const changedApproved = structuredClone(approved.payload);
+    changedApproved.itensOrcamento[0][3] = 7;
+    await assert.rejects(save(3, changedApproved), /itens de um orçamento aprovado/);
+    assert.equal((await db.query('select revision from public.atlas_load_workspace()')).rows[0].revision, 3);
+    const editedApproved = structuredClone(approved.payload);
+    editedApproved.orcamentos[0][4] = '30/11/2026';
+    editedApproved.orcamentos[0][6].observacoes = 'Condição corrigida';
+    const edited = await save(3, editedApproved);
+    assert.equal(edited.payload.orcamentos[0][4], '30/11/2026');
+    assert.equal(edited.payload.itensOrcamento[0][3], 2);
+    await db.exec('reset role; update public.orcamento set valor_total=999 where codigo is not null');
+    await db.exec(sql);
+    await db.exec(await migration('202609100003_approved_budget_items.sql'));
+    assert.deepEqual((await db.query('select valor_total from public.orcamento order by codigo')).rows.map((r) => Number(r.valor_total)), [6.9, 6.66]);
+  } finally { await db.close(); }
+});

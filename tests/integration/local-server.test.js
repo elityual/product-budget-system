@@ -73,6 +73,25 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
     assert.equal(revised.payload.telefonesClientes.length, 2);
     assert.equal(revised.payload.enderecosClientes[0][3], 'Praça da Sé');
     assert.equal(revised.payload.orcamentos[0][6].company.nome, 'Empresa histórica');
+    response = await local.request('/api/approve', { method: 'POST', body: JSON.stringify({ expected_revision: revised.revision, code: 1, conditions: { pagamento: 'À vista', entrega: '5 dias', localEntrega: 'Obra', observacoes: 'Aprovado' } }) });
+    const approved = await response.json();
+    assert.deepEqual(approved.approved_codes, [1]);
+    assert.equal(approved.payload.orcamentos[0][6].pagamento, 'À vista');
+    assert.equal(approved.payload.orcamentos[0][6].company.nome, 'Empresa histórica');
+    const alteredApproved = structuredClone(approved.payload);
+    alteredApproved.itensOrcamento[0][3] = 9;
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: approved.revision, payload: alteredApproved }) });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /itens de um orçamento aprovado/);
+    assert.equal((await load()).revision, approved.revision);
+    const editedApproved = structuredClone(approved.payload);
+    editedApproved.orcamentos[0][4] = '30/11/2026';
+    editedApproved.orcamentos[0][6].observacoes = 'Condição corrigida';
+    response = await local.request('/api/save', { method: 'POST', body: JSON.stringify({ expected_revision: approved.revision, payload: editedApproved }) });
+    const edited = await response.json();
+    assert.equal(edited.payload.orcamentos[0][4], '30/11/2026');
+    assert.equal(edited.payload.orcamentos[0][6].observacoes, 'Condição corrigida');
+    assert.equal(edited.payload.itensOrcamento[0][3], 2);
     response = await local.request('/api/backup');
     const backup = await response.json();
     assert.equal(backup.schema_version, 1);
@@ -95,7 +114,7 @@ test('servidor local persiste dados, calcula orçamento e restaura backup', asyn
       assert.equal(persisted.payload.orcamentos[0][5], 2.22);
       assert.equal(persisted.payload.contatosClientes[0][1], 'compras@cliente.test');
       assert.equal(persisted.payload.orcamentos[0][6].client.nome, 'Cliente histórico');
-      assert.equal(persisted.revision, 3);
+      assert.equal(persisted.revision, 5);
     } finally { await stopLocalServer(restarted); }
   } finally {
     if (local.server.listening) await stopLocalServer(local);

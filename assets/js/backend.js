@@ -71,10 +71,10 @@ export async function signOut() {
   }
 }
 
-export async function approveBudget(code, payload) {
+export async function approveBudget(code, payload, conditions) {
   const result = storageMode() === 'local'
-    ? await localRequest('/approve', { method: 'POST', body: JSON.stringify({ expected_revision: revision, code }) })
-    : await supabaseRequest('/rest/v1/rpc/atlas_approve_budget', session, { method: 'POST', body: JSON.stringify({ expected_revision: revision, budget_code: code }) });
+    ? await localRequest('/approve', { method: 'POST', body: JSON.stringify({ expected_revision: revision, code, conditions }) })
+    : await supabaseRequest('/rest/v1/rpc/atlas_approve_budget', session, { method: 'POST', body: JSON.stringify({ expected_revision: revision, budget_code: code, conditions }) });
   if (result === null) throw new Error('Os dados mudaram em outra sessão. Recarregue antes de aprovar.');
   if (!Array.isArray(result.approved_codes)) throw new Error('Resposta de aprovação inválida.');
   applyWorkspace(result, payload);

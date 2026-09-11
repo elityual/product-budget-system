@@ -19,7 +19,7 @@ Contratos implementados ficam em [REQUIREMENTS.md](REQUIREMENTS.md) e [ARCHITECT
 
 ## ISS - 001
 
-**Estado: correção implementada; validação remota pendente.**
+**Estado: correção implementada; validação remota realizada.**
 
 Instalações legadas podem ter `user_id` obrigatório nas tabelas comerciais. A interface atual não envia esse campo porque o Atlas usa um workspace comercial compartilhado; por isso inclusões falham enquanto edições de registros já preenchidos funcionam.
 
@@ -32,4 +32,8 @@ Após converter as chaves, execute `supabase/migrations/202609090005_refresh_wor
 Em seguida, execute `supabase/migrations/202609090006_normalize_details.sql` para concluir o modelo atual. Ela preserva os valores existentes em tabelas relacionadas e remove as colunas legadas `detalhes`; a confirmação no projeto remoto continua fazendo parte da validação pendente de ISS-001.
 
 A sequência instalada termina em `202609090007_company_profile.sql`, que move os dados da empresa para tabela própria. Essa etapa não altera a recuperação de `user_id`, mas precisa ser aplicada para que as RPCs correspondam ao contrato atual.
+
+## ISS - 002
+
+Botao de cancelar na hora de aprovar orcamento apos selecionar um orcamento nao volta para selecionar outro orcamento 
 

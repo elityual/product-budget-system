@@ -1,4 +1,4 @@
-import { data, state, get } from './data.js';
+import { data, state, get, approvedBudgets } from './data.js';
 import { calculateBudgetTotal, createBudgetItemRecords, createBudgetRecord, filterBudgetClients, filterBudgetProducts, formatDateForInput } from './budget.js';
 import { formatCurrency, recordsPerPage } from './table.js';
 export function createBudgetFlow({ render, resetFilters, closeModal, persist }) {
@@ -156,20 +156,34 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
 
   function renderSelectedItems() {
     const container = get('#selected-budget-items');
-    const items = selectedItems();
+    const itemsLocked = editingIndex !== null && approvedBudgets.has(data.orcamentos[editingIndex][0]);
+    const items = itemsLocked ? originalItems.map((item) => [null, ...item.slice(1)]) : selectedItems();
+    const isEditing = editingIndex !== null;
     container.replaceChildren();
     if (!items.length) container.textContent = 'Nenhum item adicionado.';
     items.forEach((item) => {
       const row = document.createElement('div');
-      row.className = 'budget-product';
+      row.className = isEditing ? `budget-selected-item${itemsLocked ? ' readonly' : ''}` : 'budget-product';
       const details = document.createElement('div');
+      if (isEditing) details.className = 'budget-item-identity';
       const name = document.createElement('strong');
       name.textContent = item[2];
-      const price = document.createElement('span');
-      price.textContent = `${item[3]} x ${formatCurrency(item[4])} = ${formatCurrency(item[5])}`;
-      details.append(name, price);
+      details.append(name);
+      if (isEditing && item[6]) {
+        const description = document.createElement('span');
+        description.textContent = item[6];
+        details.append(description);
+      }
+      if (!isEditing) {
+        const price = document.createElement('span');
+        price.textContent = `${item[3]} x ${formatCurrency(item[4])} = ${formatCurrency(item[5])}`;
+        details.append(price);
+      }
       const quantityLabel = document.createElement('label');
-      quantityLabel.textContent = 'Quantidade';
+      quantityLabel.className = 'budget-item-metric';
+      const quantityCaption = document.createElement('span');
+      quantityCaption.textContent = 'Quantidade';
+      quantityLabel.append(quantityCaption);
       const quantityInput = document.createElement('input');
       quantityInput.type = 'number';
       quantityInput.min = '1';
@@ -182,8 +196,19 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
         selectedQuantities[item[1]] = Number(quantityInput.value);
         renderSelectedItems();
       };
-      quantityLabel.append(quantityInput);
-      details.append(quantityLabel);
+      if (itemsLocked) {
+        const quantity = document.createElement('strong');
+        quantity.textContent = item[3];
+        quantityLabel.append(quantity);
+      } else {
+        quantityLabel.append(quantityInput);
+      }
+      const unitPrice = document.createElement('div');
+      unitPrice.className = 'budget-item-metric';
+      unitPrice.innerHTML = `<span>Valor unitário</span><strong>${formatCurrency(item[4])}</strong>`;
+      const subtotal = document.createElement('div');
+      subtotal.className = 'budget-item-metric budget-item-subtotal';
+      subtotal.innerHTML = `<span>Subtotal</span><strong>${formatCurrency(item[5])}</strong>`;
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'secondary';
@@ -193,8 +218,13 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
         delete selectedQuantities[item[1]];
         renderSelectedItems();
       };
-      row.append(details);
-      row.append(remove);
+      if (isEditing) {
+        row.append(details, quantityLabel, unitPrice, subtotal);
+        if (!itemsLocked) row.append(remove);
+      } else {
+        details.append(quantityLabel);
+        row.append(details, remove);
+      }
       container.append(row);
     });
     get('#budget-total').textContent = `Total: ${formatCurrency(calculateBudgetTotal(items))}`;
@@ -208,23 +238,29 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
     );
     budgetQuantities = {};
     selectedQuantities = Object.fromEntries(originalItems.map((item) => [item[1], item[3]]));
+    const existingRecord = editingIndex === null ? null : data.orcamentos[editingIndex];
+    const itemsLocked = Boolean(existingRecord && approvedBudgets.has(existingRecord[0]));
     form.oninput = null;
     form.onchange = null;
     form.dataset.mode = 'budget-items';
-    get('#modal-title').textContent = 'Itens do orçamento';
+    get('#modal-title').textContent = existingRecord ? 'Editar orçamento' : 'Itens do orçamento';
     form.innerHTML = `
-      <p class="selected-client" id="selected-budget-client"></p>
+      ${existingRecord ? `<header class="budget-edit-heading"><div><strong>Orçamento ${existingRecord[0]}</strong><span>${itemsLocked ? 'Aprovado pelo cliente' : 'Pendente'}</span></div></header><section class="budget-edit-basics">` : ''}
+      <label class="selected-client" id="selected-budget-client">Cliente</label>
       <label class="budget-validity">Data de validade
         <input required name="validade" type="date">
       </label>
-      <section class="budget-terms"><h3>Condições comerciais</h3>
-        <label>Condições de pagamento<input name="pagamento" type="text"></label>
-        <label>Prazo de entrega<input name="entrega" type="text"></label>
-        <label>Local de entrega<input name="localEntrega" type="text"></label>
-        <label>Observações<textarea name="observacoes" rows="3"></textarea></label>
-      </section>
-      <div class="budget-workspace">
-      <section class="budget-catalog" aria-label="Produtos disponíveis">
+      ${existingRecord ? '</section>' : ''}
+      ${itemsLocked ? `<section class="budget-terms"><header class="budget-terms-heading"><h3>Condições comerciais</h3><p>Preenchimento opcional</p></header>
+        <div class="budget-terms-grid">
+          <label>Condições de pagamento<input name="pagamento" type="text"></label>
+          <label>Prazo de entrega<input name="entrega" type="text"></label>
+          <label class="budget-terms-full">Local de entrega<input name="localEntrega" type="text"></label>
+          <label class="budget-terms-full">Observações<textarea name="observacoes" rows="4"></textarea></label>
+        </div>
+      </section>` : ''}
+      <div class="budget-workspace${existingRecord ? ' budget-workspace-edit' : ''}${itemsLocked ? ' budget-workspace-approved' : ''}">
+      ${itemsLocked ? '' : `<section class="budget-catalog" aria-label="Produtos disponíveis">
       <h3>Produtos disponíveis</h3>
       <div class="budget-product-filters">
         <label>Pesquisar produto
@@ -239,22 +275,23 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
         Selecione ao menos um item com quantidade maior que zero.
       </p>
       <div class="footer">
-        <button class="secondary" type="button" id="exit-budget-items">SAIR</button>
+        ${existingRecord ? '' : '<button class="secondary" type="button" id="exit-budget-items">SAIR</button>'}
         <button class="primary" type="button" id="add-budget-items">ADICIONAR ITENS</button>
       </div>
-      </section>
+      </section>`}
       <section class="budget-summary" aria-label="Itens do orçamento">
         <h3>Itens do orçamento</h3>
+        ${itemsLocked ? '<p class="budget-readonly-note">Itens somente para consulta</p>' : ''}
         <div id="selected-budget-items" aria-live="polite"></div>
         <p id="budget-total" aria-live="polite"></p>
-        <button class="primary" id="save-budget" disabled>SALVAR ORÇAMENTO</button>
+        ${existingRecord ? '' : '<button class="primary" id="save-budget" disabled>SALVAR ORÇAMENTO</button>'}
       </section>
       </div>
+      ${existingRecord ? `<footer class="budget-edit-footer"><button class="secondary" type="button" id="exit-budget-items">SAIR</button><button class="primary" id="save-budget" disabled>SALVAR ORÇAMENTO</button></footer>` : ''}
     `;
 
-    get('#selected-budget-client').textContent = `Cliente: ${selectedClient[3]}`;
+    if (!existingRecord) get('#selected-budget-client').append(`: ${selectedClient[3]}`);
     if (editingIndex !== null) {
-      get('#selected-budget-client').textContent = 'Cliente:';
       const select = document.createElement('select');
       select.name = 'cliente';
       select.setAttribute('aria-label', 'Cliente');
@@ -263,9 +300,14 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       select.onchange = () => { selectedBudgetClientCode = select.value; };
       get('#selected-budget-client').append(select);
       const details = data.orcamentos[editingIndex][6] || {};
-      ['pagamento', 'entrega', 'localEntrega', 'observacoes'].forEach((name) => { form.elements[name].value = details[name] || ''; });
+      ['pagamento', 'entrega', 'localEntrega', 'observacoes'].forEach((name) => { if (form.elements[name]) form.elements[name].value = details[name] || ''; });
     }
     const categoryFilter = get('#budget-product-category');
+    if (!categoryFilter) {
+      renderSelectedItems();
+      get('#exit-budget-items').onclick = closeModal;
+      return;
+    }
     data.categorias.forEach((category) => {
       categoryFilter.append(new Option(category[1], category[1]));
     });
@@ -314,14 +356,18 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
       );
       const existingRecord = editingIndex === null ? undefined : data.orcamentos[editingIndex];
       const budgetCode = existingRecord?.[0] ?? null;
-      const budgetItems = selectedItems().map((item) => [budgetCode, ...item.slice(1)]);
+      const approvedEdit = Boolean(existingRecord && approvedBudgets.has(budgetCode));
+      const budgetItems = (approvedEdit ? originalItems : selectedItems())
+        .map((item) => [budgetCode, ...item.slice(1)]);
 
       if (budgetItems.length === 0) {
-        get('#budget-items-error').classList.remove('hidden');
+        get('#budget-items-error')?.classList.remove('hidden');
         return;
       }
 
-      if (existingRecord && !confirm("Confirma a altera\u00e7\u00e3o deste or\u00e7amento e seus itens?")) return;
+      if (existingRecord && !confirm(approvedEdit
+        ? "Confirma a altera\u00e7\u00e3o deste or\u00e7amento?"
+        : "Confirma a altera\u00e7\u00e3o deste or\u00e7amento e seus itens?")) return;
       const record = createBudgetRecord({
         code: budgetCode,
         client: selectedClient[3],
@@ -329,7 +375,7 @@ export function createBudgetFlow({ render, resetFilters, closeModal, persist }) 
         validity: form.elements.validade.value,
         total: calculateBudgetTotal(budgetItems),
         existingRecord,
-        details: { ...Object.fromEntries(['pagamento', 'entrega', 'localEntrega', 'observacoes'].map((name) => [name, form.elements[name].value.trim()])), company: { ...structuredClone(data.empresa || {}), ...(existingRecord?.[6]?.company || {}) }, client: existingRecord?.[1] === selectedClient[0] && existingRecord?.[6]?.client ? { ...clientSnapshot(selectedClient), ...existingRecord[6].client } : clientSnapshot(selectedClient) }
+        details: { ...(existingRecord?.[6] || {}), ...Object.fromEntries(['pagamento', 'entrega', 'localEntrega', 'observacoes'].filter((name) => form.elements[name]).map((name) => [name, form.elements[name].value.trim()])), company: { ...structuredClone(data.empresa || {}), ...(existingRecord?.[6]?.company || {}) }, client: existingRecord?.[1] === selectedClient[0] && existingRecord?.[6]?.client ? { ...clientSnapshot(selectedClient), ...existingRecord[6].client } : clientSnapshot(selectedClient) }
       });
       if (existingRecord) {
         data.orcamentos[editingIndex] = record;

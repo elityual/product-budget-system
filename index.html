@@ -220,6 +220,16 @@
         <input id="approval-search" type="search" placeholder="Cliente ou código do orçamento" autocomplete="off">
       </label>
       <div class="client-options" id="approval-options" role="radiogroup" aria-label="Orçamentos pendentes"></div>
+      <div class="selected-client approval-summary hidden" id="selected-approval-summary"><strong id="selected-approval-title"></strong><span id="selected-approval-dates"></span></div>
+      <section class="budget-terms hidden" id="approval-terms">
+        <header class="budget-terms-heading"><h3>Condições comerciais</h3><p>Preenchimento opcional</p></header>
+        <div class="budget-terms-grid">
+          <label>Condições de pagamento<input name="pagamento" type="text"></label>
+          <label>Prazo de entrega<input name="entrega" type="text"></label>
+          <label class="budget-terms-full">Local de entrega<input name="localEntrega" type="text"></label>
+          <label class="budget-terms-full">Observações<textarea name="observacoes" rows="4"></textarea></label>
+        </div>
+      </section>
       <p class="form-error hidden" id="approval-error" role="alert">Selecione um orçamento para aprovar.</p>
       <div class="footer">
         <button class="secondary" value="cancel" formnovalidate>Cancelar</button>

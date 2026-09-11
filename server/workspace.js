@@ -44,6 +44,13 @@ export function saveWorkspace(db, expectedRevision, payload, inTransaction = fal
   for (const row of payload.itensOrcamento || []) if (row.length === 6) row.push('');
   validatePayload(db, payload, allowUnknownCodes);
   if (revisionOf(db) !== Number(expectedRevision)) return null;
+  const approvedItemRows = db.prepare('SELECT produto_codigo,produto_nome,quantidade,valor_unitario,produto_descricao FROM item_orcamento WHERE orcamento_codigo=? ORDER BY produto_codigo');
+  for (const budget of db.prepare('SELECT codigo FROM orcamento WHERE aprovado=1').all()) {
+    if (!payload.orcamentos.some((row) => Number(row[0]) === budget.codigo)) continue;
+    const expected = approvedItemRows.all(budget.codigo).map((row) => [row.produto_codigo, row.produto_nome, row.quantidade, moneyDisplay(row.valor_unitario), row.produto_descricao || '']);
+    const received = payload.itensOrcamento.filter((row) => Number(row[0]) === budget.codigo).map((row) => [Number(row[1]), row[2], Number(row[3]), moneyDisplay(money(row[4])), row[6] || '']).sort((left, right) => left[0] - right[0]);
+    if (JSON.stringify(expected) !== JSON.stringify(received)) throw new Error('Os itens de um orçamento aprovado não podem ser alterados.');
+  }
   if (!inTransaction) db.exec('BEGIN IMMEDIATE');
   try {
     db.prepare('DELETE FROM item_orcamento').run();
@@ -135,12 +142,16 @@ export function saveWorkspace(db, expectedRevision, payload, inTransaction = fal
   }
 }
 
-export function approveWorkspace(db, expectedRevision, code) {
+export function approveWorkspace(db, expectedRevision, code, conditions) {
   if (revisionOf(db) !== Number(expectedRevision)) return null;
   db.exec('BEGIN IMMEDIATE');
   try {
     const result = db.prepare('UPDATE orcamento SET aprovado=1 WHERE codigo=? AND aprovado=0').run(code);
     if (!result.changes) throw new Error('Orçamento inexistente ou já aprovado.');
+    if (conditions !== undefined) {
+      const values = ['pagamento', 'entrega', 'localEntrega', 'observacoes'].map((key) => String(conditions?.[key] || '').trim());
+      db.prepare('UPDATE orcamento_informacao SET pagamento=?,prazo_entrega=?,local_entrega=?,observacoes=? WHERE orcamento_codigo=?').run(...values, code);
+    }
     db.prepare("UPDATE atlas_meta SET valor=CAST(CAST(valor AS INTEGER)+1 AS TEXT) WHERE chave='revision'").run();
     db.exec('COMMIT');
     return loadWorkspace(db);

@@ -39,7 +39,7 @@ export function createHttpServer(config, db, automaticBackups = null) {
       }
       if (url.pathname === '/api/load' && request.method === 'GET') return json(response, 200, loadWorkspace(db));
       if (url.pathname === '/api/save' && request.method === 'POST') { const body = await readJson(request); return json(response, 200, saveWorkspace(db, body.expected_revision, body.payload)); }
-      if (url.pathname === '/api/approve' && request.method === 'POST') { const body = await readJson(request); return json(response, 200, approveWorkspace(db, body.expected_revision, body.code)); }
+      if (url.pathname === '/api/approve' && request.method === 'POST') { const body = await readJson(request); return json(response, 200, approveWorkspace(db, body.expected_revision, body.code, body.conditions)); }
       if (url.pathname === '/api/backup' && request.method === 'GET') return json(response, 200, createBackup(db), { 'Content-Disposition': 'attachment; filename="atlas-backup.json"' });
       if (url.pathname === '/api/restore' && request.method === 'POST') return json(response, 200, await restoreBackup(config, db, await readJson(request)));
       if (url.pathname === '/api/company' && request.method === 'POST') { const body = await readJson(request); return json(response, 200, { empresa: saveCompany(db, body.empresa) }); }

@@ -148,6 +148,23 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
 
   let selectedApprovalCode = '';
 
+  function lockApprovalSelection(budget) {
+    selectedApprovalCode = String(budget[0]);
+    get('#approval-search').closest('label').classList.add('hidden');
+    get('#approval-options').classList.add('hidden');
+    const summary = get('#selected-approval-summary');
+    get('#selected-approval-title').textContent = `Orçamento ${budget[0]} — ${budget[2]}`;
+    get('#selected-approval-dates').textContent = `Criado em: ${budget[3]} · Validade: ${budget[4]}`;
+    summary.classList.remove('hidden');
+    get('#approval-error').classList.add('hidden');
+    get('#confirm-approval').disabled = false;
+    const terms = get('#approval-terms');
+    terms.classList.remove('hidden');
+    const commercial = budget[6] || {};
+    ['pagamento', 'entrega', 'localEntrega', 'observacoes'].forEach((name) => { terms.querySelector(`[name="${name}"]`).value = commercial[name] || ''; });
+    terms.querySelector('[name="pagamento"]').focus();
+  }
+
   function renderApprovalOptions(search = '') {
     const options = get('#approval-options');
     const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
@@ -173,12 +190,8 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
       radio.checked = radio.value === selectedApprovalCode;
       option.classList.toggle('selected', radio.checked);
       radio.onchange = () => {
-        selectedApprovalCode = radio.value;
-        options.querySelectorAll('.approval-option').forEach((row) => {
-          row.classList.toggle('selected', row.querySelector('input').checked);
-        });
-        get('#approval-error').classList.add('hidden');
-        get('#confirm-approval').disabled = false;
+        if (selectedApprovalCode) return;
+        lockApprovalSelection(budget);
       };
       const details = document.createElement('span');
       details.className = 'approval-details';
@@ -197,7 +210,14 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
     const dialog = get('#approval-dialog');
     selectedApprovalCode = '';
     get('#approval-search').value = '';
+    get('#approval-search').closest('label').classList.remove('hidden');
+    get('#approval-options').classList.remove('hidden');
+    get('#selected-approval-summary').classList.add('hidden');
+    get('#selected-approval-title').textContent = '';
+    get('#selected-approval-dates').textContent = '';
     get('#approval-error').classList.add('hidden');
+    get('#approval-terms').classList.add('hidden');
+    get('#approval-dialog').querySelectorAll('#approval-terms input, #approval-terms textarea').forEach((field) => { field.value = ''; });
     get('#confirm-approval').disabled = true;
     renderApprovalOptions();
     dialog.returnValue = '';
@@ -209,20 +229,24 @@ export function createRecords({ render, resetFilters, persist, isSaving, setSavi
     if (event.key === 'Enter') event.preventDefault();
   };
   get('#close-approval').onclick = () => get('#approval-dialog').close('cancel');
-  get('#approval-dialog').addEventListener('close', () => {
-    if (get('#approval-dialog').returnValue !== 'approve') return;
+  get('#approval-dialog').querySelector('form').onsubmit = (event) => {
+    if (event.submitter?.value !== 'approve') return;
+    event.preventDefault();
     const code = Number(selectedApprovalCode);
     const index = data.orcamentos.findIndex((row) => row[0] === code);
     if (index >= 0) void approveRecord(index);
-  });
+  };
 
   async function approveRecord(index) {
     const budget = data.orcamentos[index];
     if (!budget || isSaving() || !confirm(`Registrar que o cliente aprovou o orçamento de código ${budget[0]}?`)) return;
+    const terms = get('#approval-terms');
+    const conditions = Object.fromEntries(['pagamento', 'entrega', 'localEntrega', 'observacoes'].map((name) => [name, terms.querySelector(`[name="${name}"]`).value.trim()]));
     setSaving(true);
     get('#application').inert = true;
     try {
-      await approveBudget(budget[0], data);
+      await approveBudget(budget[0], data, conditions);
+      get('#approval-dialog').close('approve');
       render();
     } catch (error) { alert(error.message); }
     finally { setSaving(false); get('#application').inert = false; }

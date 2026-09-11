@@ -322,7 +322,15 @@ test('budget edit confirms item changes and preserves original date and prices',
   const api = await backend(page, initial);
   await section(page, 'Or\u00e7amentos');
   await page.getByRole('button', { name: 'Editar or\u00e7amento de c\u00f3digo 102', exact: true }).click();
+  await expect(page.locator('#modal-title')).toHaveText('Editar orçamento');
+  await expect(page.locator('.budget-edit-heading')).toContainText('Orçamento 102');
+  await expect(page.locator('.budget-edit-heading')).toContainText('Pendente');
+  await expect(page.locator('.budget-workspace-edit > section')).toHaveCount(2);
+  await expect(page.locator('.budget-edit-footer #exit-budget-items')).toBeVisible();
+  await expect(page.locator('.budget-edit-footer #save-budget')).toBeVisible();
   await expect(page.locator('#selected-budget-items')).toContainText('Furadeira');
+  await expect(page.locator('#selected-budget-items')).toContainText('Valor unitário');
+  await expect(page.locator('#selected-budget-items')).toContainText('Subtotal');
   await page.getByRole('button', { name: 'Remover Furadeira profissional', exact: true }).click();
   await page.locator('[data-product-code="1"]').fill('1');
   await page.locator('#add-budget-items').click();
@@ -352,7 +360,7 @@ test('Enter adds quantities without saving the budget and shows historical price
   await quantity.fill('1');
   await quantity.press('Enter');
   await expect(page.locator('#overlay')).toBeVisible();
-  await expect(page.locator('#selected-budget-items')).toContainText('3 x');
+  await expect(page.locator('#selected-budget-items .budget-item-metric').filter({ hasText: 'Quantidade' })).toContainText('3');
   expect(api.saved().itensOrcamento[0][3]).toBe(2);
 });
 
@@ -449,11 +457,23 @@ test('situação identifica o aceite e a lista aprovada mantém somente PDF', as
   await expect(page.locator('#approval-options')).toContainText('Validade: 30/09/2026');
   await page.locator('#approval-search').fill('Horizonte');
   await page.locator('#approval-options input[value="102"]').check();
+  await expect(page.locator('#approval-search')).toBeHidden();
+  await expect(page.locator('#approval-options')).toBeHidden();
+  await expect(page.locator('#selected-approval-summary')).toHaveText('Orçamento 102 — Construtora Horizonte · Criado em: 01/09/2026 · Validade: 30/09/2026');
+  await expect(page.locator('#approval-terms [name=pagamento]')).toBeFocused();
   await page.locator('#approval-dialog button[value=approve]').click();
   await expect(approve).toBeDisabled();
   await page.reload();
   await section(page,'Orçamentos');
   await expect(page.locator('#tbody .status')).toHaveText('Aprovado pelo cliente');
+  await page.getByRole('button', { name: 'Editar orçamento de código 102', exact: true }).click();
+  await expect(page.locator('.budget-edit-heading')).toContainText('Aprovado pelo cliente');
+  await expect(page.locator('.budget-workspace-approved .budget-summary')).toBeVisible();
+  await expect(page.locator('.budget-catalog')).toHaveCount(0);
+  await expect(page.locator('.budget-readonly-note')).toHaveText('Itens somente para consulta');
+  await expect(page.locator('#selected-budget-items input')).toHaveCount(0);
+  await expect(page.locator('#selected-budget-items button')).toHaveCount(0);
+  await page.locator('#exit-budget-items').click();
   await page.getByRole('button',{name:'Orçamentos aprovados pelo cliente',exact:true}).click();
   await expect(page.locator('#tbody tr')).toHaveCount(1);
   await expect(page.locator('#tbody button')).toHaveCount(1);

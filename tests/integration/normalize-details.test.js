@@ -40,8 +40,14 @@ test('Supabase normaliza detalhes, preserva payload e permite reaplicação', as
     const saved = (await db.query('select public.atlas_save_workspace(0,$1::jsonb) result', [JSON.stringify(changed)])).rows[0].result;
     assert.equal(saved.payload.orcamentos[0][6].pagamento, 'À vista');
     assert.equal((await db.query('select pagamento from public.orcamento_informacao where orcamento_codigo=1')).rows[0].pagamento, 'À vista');
-    const approved = (await db.query('select public.atlas_approve_budget(1,1) result')).rows[0].result;
+    await db.exec('reset role;');
+    await db.exec(await migration('202609090007_company_profile.sql'));
+    await db.exec(await migration('202609100001_approval_commercial_terms.sql'));
+    await db.exec("set role authenticated; select set_config('request.jwt.claims','{\"sub\":\"33333333-3333-4333-8333-333333333333\"}',false);");
+    const approved = (await db.query("select public.atlas_approve_budget(1,1,$1::jsonb) result", [JSON.stringify({ pagamento: 'À vista', entrega: '', localEntrega: 'Obra', observacoes: 'Aceito' })])).rows[0].result;
     assert.deepEqual(approved.approved_codes, [1]);
+    assert.equal(approved.payload.orcamentos[0][6].pagamento, 'À vista');
+    assert.equal(approved.payload.orcamentos[0][6].company.nome, 'Empresa histórica');
   } finally { await db.close(); }
 });
 
